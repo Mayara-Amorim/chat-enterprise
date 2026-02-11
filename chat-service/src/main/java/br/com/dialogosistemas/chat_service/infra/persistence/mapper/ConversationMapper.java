@@ -29,54 +29,30 @@ public class ConversationMapper {
 
         // Reconstrói o Aggregate Root
         Conversation conversation = new Conversation(
-                convId,
-                tenant,
-                entity.getType(),
-                entity.getTitle(),
-                participants,
-                creator,
-                entity.getCreatedAt()
-        );
+                convId, tenant, entity.getType(), entity.getTitle(), participants, creator, entity.getCreatedAt(),entity.getLastMessageContent(),
+                entity.getLastMessageAt());
 
 
         return conversation;
     }
 
     public ConversationEntity toEntity(Conversation domain) {
-        ConversationEntity entity = new ConversationEntity(
-                domain.getId().value(),
-                domain.getTenantId().value(),
-                domain.getTenantId().toString().isEmpty() ? null : null, // (ajuste técnico)
-                null, // title ajustado abaixo
-                domain.getCreatorId().value(),
-                domain.getCreatedAt() // Ajuste se não tiver getCreatedAt no domain, adicione lá
-        );
-
-        // Ajustes finos
+        ConversationEntity entity = new ConversationEntity();
+        entity.setId(domain.getId().value());
         entity.setTenantId(domain.getTenantId().value());
-        entity.setType(domain.getType()); // Assumindo getter no domain
-        entity.setTitle(domain.getTitle()); // Assumindo getter no domain
+        entity.setType(domain.getType());
+        entity.setTitle(domain.getTitle());
+        entity.setCreatorId(domain.getCreatorId().value());
+        entity.setCreatedAt(domain.getCreatedAt());
+        entity.setLastMessageContent(domain.getLastMessagePreview());
+        entity.setLastMessageAt(domain.getLastMessageAt());
 
-        // Mapeia participantes
-        Set<UUID> ids = domain.getParticipants().stream() // Assumindo getter público para participants
+        // Converter Set<UserId> para Set<UUID>
+        Set<UUID> participantIds = domain.getParticipants().stream()
                 .map(UserId::value)
                 .collect(Collectors.toSet());
-        entity.setParticipantIds(ids);
 
-        // Mapeia mensagens (novas)
-        // salvamos mensagens separadas, mas se for cascata:
-        if (domain.getUnmodifiableMessages() != null) {
-            var messageEntities = domain.getUnmodifiableMessages().stream()
-                    .map(msg -> new MessageEntity(
-                            msg.getId().value(),
-                            entity, // Associa a entidade pai
-                            msg.getSenderId().value(),
-                            msg.getContent(),
-                            msg.getStatus(),
-                            msg.getCreatedAt()
-                    )).collect(Collectors.toList());
-            entity.setMessages(messageEntities);
-        }
+        entity.setParticipantIds(participantIds);
 
         return entity;
     }

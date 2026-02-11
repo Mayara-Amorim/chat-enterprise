@@ -9,6 +9,7 @@ import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -48,4 +49,15 @@ public class ConversationRepositoryGateway implements ConversationGateway {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional
+    public void updateLastMessage(ConversationId id, String content, Instant sentAt) {
+        jpaRepository.updateLastMessage(id.value(), content, sentAt);
+         System.out.println("DEBUG: Atualizando conversa " + id.value() + " com: " + content);
+    }
+
+
+
+
 }

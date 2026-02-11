@@ -4,8 +4,6 @@ import br.com.dialogosistemas.chat_service.domain.model.message.Message;
 import br.com.dialogosistemas.chat_service.domain.valueObject.ConversationId;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.TenantId;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
-import com.fasterxml.jackson.annotation.JacksonInject;
-
 
 import java.time.Instant;
 import java.util.*;
@@ -15,14 +13,26 @@ public class Conversation {
     private final ConversationId id;
     private final TenantId tenantId;
     private final ConversationType type;
-    private String title; // Opcional para INDIVIDUAL
+    private String title;
     private final Set<UserId> participants;
-    private final List<Message> messages; // Em memória, carrega apenas as recentes (lazy loading na infra)
+    private final List<Message> messages;
     private final UserId creatorId;
     private final Instant createdAt;
 
-    // Construtor completo para Reconstituição (via Banco de Dados)
-    public Conversation(ConversationId id, TenantId tenantId, ConversationType type, String title, Set<UserId> participants, UserId creatorId, Instant createdAt) {
+    // --- NOVOS CAMPOS (Read Model) ---
+    private String lastMessagePreview;
+    private Instant lastMessageAt;
+
+    // Construtor completo para Reconstituição (via Mapper/Banco de Dados)
+    public Conversation(ConversationId id,
+                        TenantId tenantId,
+                        ConversationType type,
+                        String title,
+                        Set<UserId> participants,
+                        UserId creatorId,
+                        Instant createdAt,
+                        String lastMessagePreview,
+                        Instant lastMessageAt) {
         this.id = id;
         this.tenantId = tenantId;
         this.type = type;
@@ -31,6 +41,10 @@ public class Conversation {
         this.creatorId = creatorId;
         this.createdAt = createdAt;
         this.messages = new ArrayList<>();
+
+        // Inicialização dos novos campos
+        this.lastMessagePreview = lastMessagePreview;
+        this.lastMessageAt = lastMessageAt;
     }
 
     // Factory: Criar Conversa Individual
@@ -46,17 +60,20 @@ public class Conversation {
                 null,
                 participants,
                 creator,
-                Instant.now()
+                Instant.now(),
+                null, // Sem mensagem inicial
+                null  // Sem data inicial
         );
     }
 
+    // Factory: Criar Grupo
     public static Conversation createGroup(TenantId tenantId, UserId creator, String groupTitle, Set<UserId> initialParticipants) {
         if (groupTitle == null || groupTitle.isBlank()) {
             throw new IllegalArgumentException("Group title is required");
         }
 
         Set<UserId> allParticipants = new HashSet<>(initialParticipants);
-        allParticipants.add(creator); // Garante que o criador está no grupo
+        allParticipants.add(creator);
 
         return new Conversation(
                 new ConversationId(UUID.randomUUID()),
@@ -65,7 +82,9 @@ public class Conversation {
                 groupTitle,
                 allParticipants,
                 creator,
-                Instant.now()
+                Instant.now(),
+                null, // Sem mensagem inicial
+                null  // Sem data inicial
         );
     }
 
@@ -76,44 +95,35 @@ public class Conversation {
 
         Message newMessage = Message.create(senderId, content);
         this.messages.add(newMessage);
+        this.lastMessagePreview = content;
+        this.lastMessageAt = newMessage.getCreatedAt();
+
         return newMessage;
     }
 
-    // Adicionar Participante (Regra: só em grupos)
-    public void addParticipant(UserId requesterId, UserId newParticipant) {
-        if (this.type != ConversationType.GROUP) {
-            throw new IllegalStateException("Cannot add participants to individual conversation");
-        }
-        // Futuro: Validar se requester é ADMIN
-        this.participants.add(newParticipant);
+    public void setTitle(String title) {
+        this.title = title;
     }
 
+    public List<Message> getMessages() {
+        return messages;
+    }
+
+    public void setLastMessagePreview(String lastMessagePreview) {
+        this.lastMessagePreview = lastMessagePreview;
+    }
+
+    public void setLastMessageAt(Instant lastMessageAt) {
+        this.lastMessageAt = lastMessageAt;
+    }
+
+    public String getLastMessagePreview() { return lastMessagePreview; }
+    public Instant getLastMessageAt() { return lastMessageAt; }
     public ConversationId getId() { return id; }
     public TenantId getTenantId() { return tenantId; }
-    public List<Message> getUnmodifiableMessages() { return Collections.unmodifiableList(messages); }
-
-    public UserId getCreatorId() {
-        return creatorId;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public ConversationType getType() {
-        return type;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    /**
-     * Retorna uma visualização imutável dos participantes.
-     * Isso impede que classes externas (como o Mapper) adicionem usuários diretamente na lista,
-     * furando a validação do método addParticipant().
-     */
-    public Set<UserId> getParticipants() {
-        return Collections.unmodifiableSet(participants);
-    }
+    public UserId getCreatorId() { return creatorId; }
+    public Instant getCreatedAt() { return createdAt; }
+    public ConversationType getType() { return type; }
+    public String getTitle() { return title; }
+    public Set<UserId> getParticipants() { return Collections.unmodifiableSet(participants); }
 }

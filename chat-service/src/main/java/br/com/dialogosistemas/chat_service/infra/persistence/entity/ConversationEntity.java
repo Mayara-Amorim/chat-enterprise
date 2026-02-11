@@ -1,7 +1,6 @@
 package br.com.dialogosistemas.chat_service.infra.persistence.entity;
 
 import br.com.dialogosistemas.chat_service.domain.model.conversation.ConversationType;
-import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.*;
@@ -30,6 +29,11 @@ public class ConversationEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "last_message_content")
+    private String lastMessageContent;
+
+    @Column(name = "last_message_at")
+    private Instant lastMessageAt;
     // Relacionamento One-to-Many com Mensagens
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<MessageEntity> messages = new ArrayList<>();
@@ -74,6 +78,17 @@ public class ConversationEntity {
 
     public List<MessageEntity> getMessages() { return messages; }
     public void setMessages(List<MessageEntity> messages) { this.messages = messages; }
+
+    public Instant getLastMessageAt() { return lastMessageAt; }
+    public void setLastMessageAt(Instant lastMessageAt) { this.lastMessageAt = lastMessageAt; }
+
+    public String getLastMessageContent() {
+        return lastMessageContent;
+    }
+
+    public void setLastMessageContent(String lastMessageContent) {
+        this.lastMessageContent = lastMessageContent;
+    }
 
     public Set<UUID> getParticipantIds() { return participantIds; }
     public void setParticipantIds(Set<UUID> participantIds) { this.participantIds = participantIds; }

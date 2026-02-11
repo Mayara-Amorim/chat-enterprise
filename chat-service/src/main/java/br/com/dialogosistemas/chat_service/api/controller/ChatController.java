@@ -2,13 +2,16 @@ package br.com.dialogosistemas.chat_service.api.controller;
 
 import br.com.dialogosistemas.chat_service.application.DTO.ConversationResponseDTO;
 import br.com.dialogosistemas.chat_service.application.DTO.CreateConversationRequestDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.InboxItemDTO;
 import br.com.dialogosistemas.chat_service.application.DTO.SendMessageRequestDTO;
 import br.com.dialogosistemas.chat_service.application.usecase.CreateConversationUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.GetChatHistoryUseCase;
+import br.com.dialogosistemas.chat_service.application.usecase.GetInboxUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.SendMessageUseCase;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -18,13 +21,15 @@ public class ChatController {
     private final CreateConversationUseCase createConversationUseCase;
     private final SendMessageUseCase sendMessageUseCase;
     private final GetChatHistoryUseCase getChatHistoryUseCase;
+    private final GetInboxUseCase getInboxUseCase;
 
     public ChatController(CreateConversationUseCase createConversationUseCase,
                           SendMessageUseCase sendMessageUseCase,
-                          GetChatHistoryUseCase getChatHistoryUseCase) {
+                          GetChatHistoryUseCase getChatHistoryUseCase, GetInboxUseCase getInboxUseCase) {
         this.createConversationUseCase = createConversationUseCase;
         this.sendMessageUseCase = sendMessageUseCase;
         this.getChatHistoryUseCase = getChatHistoryUseCase;
+        this.getInboxUseCase = getInboxUseCase;
     }
 
     @PostMapping
@@ -53,5 +58,12 @@ public class ChatController {
             @RequestParam(defaultValue = "20") int size) {
 
         return getChatHistoryUseCase.execute(conversationId, page, size);
+    }
+
+    @GetMapping("/inbox")
+    public List<InboxItemDTO> getInbox() {
+        // Mock de usuário
+        UUID fakeUserId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        return getInboxUseCase.execute(fakeUserId);
     }
 }
