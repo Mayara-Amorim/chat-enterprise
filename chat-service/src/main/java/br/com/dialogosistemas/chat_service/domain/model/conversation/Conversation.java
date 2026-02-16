@@ -7,6 +7,7 @@ import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Conversation {
 
@@ -14,21 +15,19 @@ public class Conversation {
     private final TenantId tenantId;
     private final ConversationType type;
     private String title;
-    private final Set<UserId> participants;
+    // Mudança: Agora guarda os objetos ricos de participantes
+    private final Set<ConversationParticipant> participants;
     private final List<Message> messages;
     private final UserId creatorId;
     private final Instant createdAt;
-
-    // --- NOVOS CAMPOS (Read Model) ---
     private String lastMessagePreview;
     private Instant lastMessageAt;
 
-    // Construtor completo para Reconstituição (via Mapper/Banco de Dados)
     public Conversation(ConversationId id,
                         TenantId tenantId,
                         ConversationType type,
                         String title,
-                        Set<UserId> participants,
+                        Set<ConversationParticipant> participants,
                         UserId creatorId,
                         Instant createdAt,
                         String lastMessagePreview,
@@ -41,55 +40,55 @@ public class Conversation {
         this.creatorId = creatorId;
         this.createdAt = createdAt;
         this.messages = new ArrayList<>();
-
-        // Inicialização dos novos campos
         this.lastMessagePreview = lastMessagePreview;
         this.lastMessageAt = lastMessageAt;
     }
 
-    // Factory: Criar Conversa Individual
     public static Conversation createIndividual(TenantId tenantId, UserId creator, UserId otherParticipant) {
-        Set<UserId> participants = new HashSet<>();
-        participants.add(creator);
-        participants.add(otherParticipant);
+        Set<ConversationParticipant> parts = new HashSet<>();
+        parts.add(new ConversationParticipant(creator));
+        parts.add(new ConversationParticipant(otherParticipant));
 
         return new Conversation(
                 new ConversationId(UUID.randomUUID()),
                 tenantId,
                 ConversationType.INDIVIDUAL,
                 null,
-                participants,
+                parts,
                 creator,
                 Instant.now(),
-                null, // Sem mensagem inicial
-                null  // Sem data inicial
+                null,
+                null
         );
     }
 
-    // Factory: Criar Grupo
     public static Conversation createGroup(TenantId tenantId, UserId creator, String groupTitle, Set<UserId> initialParticipants) {
         if (groupTitle == null || groupTitle.isBlank()) {
             throw new IllegalArgumentException("Group title is required");
         }
 
-        Set<UserId> allParticipants = new HashSet<>(initialParticipants);
-        allParticipants.add(creator);
+        Set<ConversationParticipant> parts = initialParticipants.stream()
+                .map(ConversationParticipant::new)
+                .collect(Collectors.toSet());
+        parts.add(new ConversationParticipant(creator));
 
         return new Conversation(
                 new ConversationId(UUID.randomUUID()),
                 tenantId,
                 ConversationType.GROUP,
                 groupTitle,
-                allParticipants,
+                parts,
                 creator,
                 Instant.now(),
-                null, // Sem mensagem inicial
-                null  // Sem data inicial
+                null,
+                null
         );
     }
 
+    // Regra de Negócio: Adicionar mensagem E incrementar contadores
     public Message addMessage(UserId senderId, String content) {
-        if (!participants.contains(senderId)) {
+        boolean isParticipant = participants.stream().anyMatch(p -> p.getUserId().equals(senderId));
+        if (!isParticipant) {
             throw new IllegalStateException("User is not a participant of this conversation");
         }
 
@@ -98,24 +97,26 @@ public class Conversation {
         this.lastMessagePreview = content;
         this.lastMessageAt = newMessage.getCreatedAt();
 
+        // Incrementa o unread_count de todos os participantes, exceto o remetente
+        this.participants.stream()
+                .filter(p -> !p.getUserId().equals(senderId))
+                .forEach(ConversationParticipant::incrementUnreadCount);
+
         return newMessage;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
+    // Regra de Negócio: Marcar como lido para um usuário
+    public void markParticipantAsRead(UserId userId) {
+        this.participants.stream()
+                .filter(p -> p.getUserId().equals(userId))
+                .findFirst()
+                .ifPresent(ConversationParticipant::markAsRead);
     }
 
-    public List<Message> getMessages() {
-        return messages;
-    }
-
-    public void setLastMessagePreview(String lastMessagePreview) {
-        this.lastMessagePreview = lastMessagePreview;
-    }
-
-    public void setLastMessageAt(Instant lastMessageAt) {
-        this.lastMessageAt = lastMessageAt;
-    }
+    public void setTitle(String title) { this.title = title; }
+    public List<Message> getMessages() { return messages; }
+    public void setLastMessagePreview(String preview) { this.lastMessagePreview = preview; }
+    public void setLastMessageAt(Instant at) { this.lastMessageAt = at; }
 
     public String getLastMessagePreview() { return lastMessagePreview; }
     public Instant getLastMessageAt() { return lastMessageAt; }
@@ -125,5 +126,5 @@ public class Conversation {
     public Instant getCreatedAt() { return createdAt; }
     public ConversationType getType() { return type; }
     public String getTitle() { return title; }
-    public Set<UserId> getParticipants() { return Collections.unmodifiableSet(participants); }
+    public Set<ConversationParticipant> getParticipants() { return Collections.unmodifiableSet(participants); }
 }

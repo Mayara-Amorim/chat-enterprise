@@ -7,7 +7,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = {@Index(name = "idx_messages_conversation_created", columnList = "conversation_id, created_at DESC")
+})
 public class MessageEntity {
 
     @Id

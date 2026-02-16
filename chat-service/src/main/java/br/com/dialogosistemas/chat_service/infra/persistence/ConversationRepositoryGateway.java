@@ -20,7 +20,6 @@ public class ConversationRepositoryGateway implements ConversationGateway {
     private final ConversationJpaRepository jpaRepository;
     private final ConversationMapper mapper;
 
-    // Injeção de dependência via construtor (Boa prática Spring)
     public ConversationRepositoryGateway(ConversationJpaRepository jpaRepository, ConversationMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;

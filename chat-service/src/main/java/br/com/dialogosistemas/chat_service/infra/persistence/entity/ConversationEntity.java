@@ -34,18 +34,13 @@ public class ConversationEntity {
 
     @Column(name = "last_message_at")
     private Instant lastMessageAt;
-    // Relacionamento One-to-Many com Mensagens
+
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<MessageEntity> messages = new ArrayList<>();
 
-    // Tabela de junção simples para IDs de participantes
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "conversation_participants",
-            joinColumns = @JoinColumn(name = "conversation_id")
-    )
-    @Column(name = "user_id")
-    private Set<UUID> participantIds = new HashSet<>();
+    // Mapeando corretamente para a entidade de banco, e não a de domínio
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ConversationParticipantEntity> participants = new HashSet<>();
 
     public ConversationEntity() {}
 
@@ -58,41 +53,31 @@ public class ConversationEntity {
         this.createdAt = createdAt;
     }
 
+    public void addParticipant(ConversationParticipantEntity participantEntity) {
+        this.participants.add(participantEntity);
+        participantEntity.assignConversation(this);
+    }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-
     public UUID getTenantId() { return tenantId; }
     public void setTenantId(UUID tenantId) { this.tenantId = tenantId; }
-
     public ConversationType getType() { return type; }
     public void setType(ConversationType type) { this.type = type; }
-
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
-
     public UUID getCreatorId() { return creatorId; }
     public void setCreatorId(UUID creatorId) { this.creatorId = creatorId; }
-
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-
     public List<MessageEntity> getMessages() { return messages; }
     public void setMessages(List<MessageEntity> messages) { this.messages = messages; }
-
     public Instant getLastMessageAt() { return lastMessageAt; }
     public void setLastMessageAt(Instant lastMessageAt) { this.lastMessageAt = lastMessageAt; }
-
-    public String getLastMessageContent() {
-        return lastMessageContent;
-    }
-
-    public void setLastMessageContent(String lastMessageContent) {
-        this.lastMessageContent = lastMessageContent;
-    }
-
-    public Set<UUID> getParticipantIds() { return participantIds; }
-    public void setParticipantIds(Set<UUID> participantIds) { this.participantIds = participantIds; }
-
+    public String getLastMessageContent() { return lastMessageContent; }
+    public void setLastMessageContent(String lastMessageContent) { this.lastMessageContent = lastMessageContent; }
+    public Set<ConversationParticipantEntity> getParticipants() { return participants; }
+    public void setParticipants(Set<ConversationParticipantEntity> participants) { this.participants = participants; }
 
     @Override
     public boolean equals(Object o) {

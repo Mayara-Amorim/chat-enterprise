@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,4 +16,7 @@ public interface MessageJpaRepository extends JpaRepository<MessageEntity, UUID>
     // O Pageable do Spring já resolve o LIMIT e OFFSET automaticamente
     @Query("SELECT m FROM MessageEntity m WHERE m.conversation.id = :conversationId ORDER BY m.createdAt DESC")
     List<MessageEntity> findByConversationId(@Param("conversationId") UUID conversationId, Pageable pageable);
+
+    @Query("SELECT m FROM MessageEntity m WHERE m.conversation.id = :conversationId AND m.createdAt < :lastMessageDate ORDER BY m.createdAt DESC")
+    List<MessageEntity> findHistoryBefore(@Param("conversationId") UUID conversationId, @Param("lastMessageDate") Instant lastMessageDate, Pageable pageable);
 }

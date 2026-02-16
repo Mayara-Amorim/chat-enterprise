@@ -7,5 +7,7 @@ public record InboxItemDTO(
         UUID conversationId,
         String title,
         String lastMessagePreview,
-        Instant lastMessageAt
+        Instant lastMessageAt,
+        Integer unreadCount,
+        Instant lastReadAt
 ) {}

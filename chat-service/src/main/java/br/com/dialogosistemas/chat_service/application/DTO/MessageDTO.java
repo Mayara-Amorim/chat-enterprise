@@ -7,7 +7,7 @@ import java.util.UUID;
 public record MessageDTO(
         UUID id,
         String content,
-        UUID senderId,
+        String senderId,
         Instant sentAt,
         String status
 ) {
@@ -15,7 +15,7 @@ public record MessageDTO(
         return new MessageDTO(
                 entity.getId(),
                 entity.getContent(),
-                entity.getSenderId(),
+                entity.getSenderId().toString(),
                 entity.getCreatedAt(),
                 entity.getStatus().name()
         );
