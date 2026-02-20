@@ -55,11 +55,18 @@ public class ConversationParticipantEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ConversationParticipantEntity that = (ConversationParticipantEntity) o;
-        return Objects.equals(id, that.id);
+
+        // Se ambos têm ID do banco de dados, compara por ID
+        if (this.id != null && that.id != null) {
+            return this.id.equals(that.id);
+        }
+
+        // Caso contrário (objetos novos em memória), compara pela Chave de Negócio
+        return Objects.equals(this.userId, that.userId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(userId);
     }
 }

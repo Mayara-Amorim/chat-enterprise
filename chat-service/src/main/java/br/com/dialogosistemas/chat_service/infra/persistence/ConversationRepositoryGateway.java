@@ -3,6 +3,7 @@ package br.com.dialogosistemas.chat_service.infra.persistence;
 import br.com.dialogosistemas.chat_service.domain.gateway.ConversationGateway;
 import br.com.dialogosistemas.chat_service.domain.model.conversation.Conversation;
 import br.com.dialogosistemas.chat_service.domain.valueObject.ConversationId;
+import br.com.dialogosistemas.chat_service.infra.persistence.entity.ConversationEntity;
 import br.com.dialogosistemas.chat_service.infra.persistence.mapper.ConversationMapper;
 import br.com.dialogosistemas.chat_service.infra.persistence.repository.ConversationJpaRepository;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
@@ -28,9 +29,35 @@ public class ConversationRepositoryGateway implements ConversationGateway {
     @Override
     @Transactional
     public Conversation save(Conversation conversation) {
-        var entity = mapper.toEntity(conversation);
-        var savedEntity = jpaRepository.save(entity);
-        return mapper.toDomain(savedEntity);
+        Optional<ConversationEntity> existingOpt = jpaRepository.findById(conversation.getId().value());
+
+        if (existingOpt.isPresent()) {
+            // ATUALIZAÇÃO SEGURA (Dirty Checking)
+            // Não recriamos as coleções, apenas atualizamos os campos
+            ConversationEntity existing = existingOpt.get();
+            existing.setTitle(conversation.getTitle());
+            existing.setLastMessageContent(conversation.getLastMessagePreview());
+            existing.setLastMessageAt(conversation.getLastMessageAt());
+
+            // Atualiza o status de leitura dos participantes (sem remover ninguém)
+            conversation.getParticipants().forEach(domainParticipant -> {
+                existing.getParticipants().stream()
+                        .filter(p -> p.getUserId().equals(domainParticipant.getUserId().value()))
+                        .findFirst()
+                        .ifPresent(p -> {
+                            p.setUnreadCount(domainParticipant.getUnreadCount());
+                            p.setLastReadAt(domainParticipant.getLastReadAt());
+                        });
+            });
+
+            // O Hibernate salva automaticamente no fim da transação
+            return mapper.toDomain(existing);
+        } else {
+            // CRIAÇÃO NOVA (Apenas para novos grupos/conversas)
+            var entity = mapper.toEntity(conversation);
+            var savedEntity = jpaRepository.save(entity);
+            return mapper.toDomain(savedEntity);
+        }
     }
 
     @Override
@@ -53,10 +80,6 @@ public class ConversationRepositoryGateway implements ConversationGateway {
     @Transactional
     public void updateLastMessage(ConversationId id, String content, Instant sentAt) {
         jpaRepository.updateLastMessage(id.value(), content, sentAt);
-         System.out.println("DEBUG: Atualizando conversa " + id.value() + " com: " + content);
+        System.out.println("DEBUG: Atualizando conversa " + id.value() + " com: " + content);
     }
-
-
-
-
 }

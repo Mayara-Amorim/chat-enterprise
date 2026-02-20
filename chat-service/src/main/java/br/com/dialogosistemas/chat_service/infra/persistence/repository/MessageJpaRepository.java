@@ -19,4 +19,16 @@ public interface MessageJpaRepository extends JpaRepository<MessageEntity, UUID>
 
     @Query("SELECT m FROM MessageEntity m WHERE m.conversation.id = :conversationId AND m.createdAt < :lastMessageDate ORDER BY m.createdAt DESC")
     List<MessageEntity> findHistoryBefore(@Param("conversationId") UUID conversationId, @Param("lastMessageDate") Instant lastMessageDate, Pageable pageable);
+
+    //Traz mensagens que o ususario ainda nao leu com NOT EXISTS
+    @Query("SELECT m FROM MessageEntity m " +
+            "WHERE m.conversation.id = :conversationId " +
+            "AND m.senderId != :userId " +
+            "AND m.status != :readStatus " + // Tipagem Forte
+            "AND NOT EXISTS (SELECT r FROM m.readReceipts r WHERE r.userId = :userId)")
+    List<MessageEntity> findUnreadByParticipant(
+            @Param("conversationId") UUID conversationId,
+            @Param("userId") UUID userId,
+            @Param("readStatus") br.com.dialogosistemas.chat_service.domain.model.message.MessageStatus readStatus
+    );
 }

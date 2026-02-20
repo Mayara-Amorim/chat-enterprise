@@ -3,7 +3,9 @@ package br.com.dialogosistemas.chat_service.infra.persistence.entity;
 import br.com.dialogosistemas.chat_service.domain.model.message.MessageStatus;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -19,6 +21,9 @@ public class MessageEntity {
     @JoinColumn(name = "conversation_id", nullable = false)
     private ConversationEntity conversation;
 
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MessageReadReceiptEntity> readReceipts = new HashSet<>();
+
     @Column(name = "sender_id", nullable = false)
     private UUID senderId;
 
@@ -31,7 +36,6 @@ public class MessageEntity {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
 
     public MessageEntity() {}
     public MessageEntity(UUID id, ConversationEntity conversation, UUID senderId, String content, MessageStatus status, Instant createdAt) {
@@ -60,6 +64,15 @@ public class MessageEntity {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public void addReadReceipt(MessageReadReceiptEntity receipt) {
+        this.readReceipts.add(receipt);
+        receipt.assignMessage(this);
+    }
+
+    public Set<MessageReadReceiptEntity> getReadReceipts() {
+        return readReceipts;
+    }
 
     @Override
     public boolean equals(Object o) {
