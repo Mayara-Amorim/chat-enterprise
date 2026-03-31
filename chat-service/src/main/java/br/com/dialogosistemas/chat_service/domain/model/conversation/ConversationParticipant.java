@@ -10,23 +10,28 @@ public class ConversationParticipant {
     private final UserId userId;
     private Integer unreadCount;
     private Instant lastReadAt;
+    private final ParticipantRole role;
+
 
     // Construtor para novos participantes
     public ConversationParticipant(UserId userId) {
-        this.userId = userId;
-        this.unreadCount = 0;
-        this.lastReadAt = Instant.now();
+        this(userId, 0, null, ParticipantRole.MEMBER);
     }
 
 
-    public ConversationParticipant(UserId userId, Integer unreadCount, Instant lastReadAt) {
+    public ConversationParticipant(UserId userId, Integer unreadCount, Instant lastReadAt, ParticipantRole role) {
         this.userId = userId;
-        this.unreadCount = unreadCount;
+        this.unreadCount = unreadCount != null ? unreadCount : 0;
         this.lastReadAt = lastReadAt;
+        this.role = role != null ? role : ParticipantRole.MEMBER;
     }
 
     public void incrementUnreadCount() {
         this.unreadCount++;
+    }
+
+    public static ConversationParticipant create(UserId userId, ParticipantRole role) {
+        return new ConversationParticipant(userId, 0, null, role);
     }
 
     public void markAsRead() {
@@ -38,6 +43,7 @@ public class ConversationParticipant {
     public UserId getUserId() { return userId; }
     public Integer getUnreadCount() { return unreadCount; }
     public Instant getLastReadAt() { return lastReadAt; }
+    public ParticipantRole getRole() { return role; }
 
     // Equals e HashCode baseados na identidade do usuário nesta conversa
     @Override

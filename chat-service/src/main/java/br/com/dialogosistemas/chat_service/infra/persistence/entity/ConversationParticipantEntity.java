@@ -1,5 +1,6 @@
 package br.com.dialogosistemas.chat_service.infra.persistence.entity;
 
+import br.com.dialogosistemas.chat_service.domain.model.conversation.ParticipantRole;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Objects;
@@ -26,12 +27,17 @@ public class ConversationParticipantEntity {
     @Column(name = "last_read_at")
     private Instant lastReadAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'MEMBER'")
+    private ParticipantRole role;
+
     public ConversationParticipantEntity() {}
 
-    public ConversationParticipantEntity(UUID userId, Integer unreadCount, Instant lastReadAt) {
+    public ConversationParticipantEntity(UUID userId, Integer unreadCount, Instant lastReadAt, ParticipantRole role) {
         this.userId = userId;
         this.unreadCount = unreadCount != null ? unreadCount : 0;
         this.lastReadAt = lastReadAt;
+        this.role = role != null ? role : ParticipantRole.MEMBER;
     }
 
     // Método utilitário para o Hibernate gerenciar relacionamento bidirecional
@@ -49,6 +55,8 @@ public class ConversationParticipantEntity {
     public void setUnreadCount(Integer unreadCount) { this.unreadCount = unreadCount; }
     public Instant getLastReadAt() { return lastReadAt; }
     public void setLastReadAt(Instant lastReadAt) { this.lastReadAt = lastReadAt; }
+    public ParticipantRole getRole() { return role; }
+    public void setRole(ParticipantRole role) { this.role = role != null ? role : ParticipantRole.MEMBER; }
 
     @Override
     public boolean equals(Object o) {

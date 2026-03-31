@@ -36,6 +36,7 @@ public class ConversationRepositoryGateway implements ConversationGateway {
             // Não recriamos as coleções, apenas atualizamos os campos
             ConversationEntity existing = existingOpt.get();
             existing.setTitle(conversation.getTitle());
+            existing.setDescription(conversation.getDescription());
             existing.setLastMessageContent(conversation.getLastMessagePreview());
             existing.setLastMessageAt(conversation.getLastMessageAt());
 
@@ -47,6 +48,7 @@ public class ConversationRepositoryGateway implements ConversationGateway {
                         .ifPresent(p -> {
                             p.setUnreadCount(domainParticipant.getUnreadCount());
                             p.setLastReadAt(domainParticipant.getLastReadAt());
+                            p.setRole(domainParticipant.getRole());
                         });
             });
 

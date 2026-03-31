@@ -17,8 +17,14 @@ public interface MessageJpaRepository extends JpaRepository<MessageEntity, UUID>
     @Query("SELECT m FROM MessageEntity m WHERE m.conversation.id = :conversationId ORDER BY m.createdAt DESC")
     List<MessageEntity> findByConversationId(@Param("conversationId") UUID conversationId, Pageable pageable);
 
-    @Query("SELECT m FROM MessageEntity m WHERE m.conversation.id = :conversationId AND m.createdAt < :lastMessageDate ORDER BY m.createdAt DESC")
-    List<MessageEntity> findHistoryBefore(@Param("conversationId") UUID conversationId, @Param("lastMessageDate") Instant lastMessageDate, Pageable pageable);
+    @Query("SELECT m FROM MessageEntity m " +
+            "WHERE m.conversation.id = :conversationId " +
+            "AND (:cursorDate IS NULL OR m.createdAt < :cursorDate OR (m.createdAt = :cursorDate AND m.id < :cursorId)) " +
+            "ORDER BY m.createdAt DESC, m.id DESC")
+    List<MessageEntity> findMessagesBeforeCursor(@Param("conversationId") UUID conversationId,
+                                                 @Param("cursorDate") Instant cursorDate,
+                                                 @Param("cursorId") UUID cursorId,
+                                                 Pageable pageable);
 
     //Traz mensagens que o ususario ainda nao leu com NOT EXISTS
     @Query("SELECT m FROM MessageEntity m " +

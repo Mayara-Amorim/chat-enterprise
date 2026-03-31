@@ -16,28 +16,24 @@ import java.util.stream.Collectors;
 public class ConversationMapper {
 
     public Conversation toDomain(ConversationEntity entity) {
-        // Converte as entidades filhas (JPA) para objetos de domínio
         Set<ConversationParticipant> participants = entity.getParticipants().stream()
-                .map(pEntity -> new ConversationParticipant(
-                        new UserId(pEntity.getUserId()),
-                        pEntity.getUnreadCount(),
-                        pEntity.getLastReadAt()
+                .map(participant -> new ConversationParticipant(
+                        new UserId(participant.getUserId()),
+                        participant.getUnreadCount(),
+                        participant.getLastReadAt(),
+                        participant.getRole()
                 ))
                 .collect(Collectors.toSet());
 
-        UserId creator = new UserId(entity.getCreatorId());
-        TenantId tenant = new TenantId(entity.getTenantId());
-        ConversationId convId = new ConversationId(entity.getId());
-
-        // Reconstrói o Aggregate Root passando a coleção de objetos ricos
         return new Conversation(
-                convId,
-                tenant,
+                new ConversationId(entity.getId()),
+                new TenantId(entity.getTenantId()),
                 entity.getType(),
                 entity.getTitle(),
-                participants,
-                creator,
+                entity.getDescription(),
                 entity.getCreatedAt(),
+                new UserId(entity.getCreatorId()),
+                participants,
                 entity.getLastMessageContent(),
                 entity.getLastMessageAt()
         );
@@ -49,20 +45,19 @@ public class ConversationMapper {
         entity.setTenantId(domain.getTenantId().value());
         entity.setType(domain.getType());
         entity.setTitle(domain.getTitle());
+        entity.setDescription(domain.getDescription());
         entity.setCreatorId(domain.getCreatorId().value());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setLastMessageContent(domain.getLastMessagePreview());
         entity.setLastMessageAt(domain.getLastMessageAt());
 
-        // Converte os objetos de domínio para entidades filhas
-        // O método addParticipant da entidade garante a amarração bidirecional (foreign key)
-        domain.getParticipants().forEach(pDomain -> {
-            ConversationParticipantEntity pEntity = new ConversationParticipantEntity(
-                    pDomain.getUserId().value(),
-                    pDomain.getUnreadCount(),
-                    pDomain.getLastReadAt()
-            );
-            entity.addParticipant(pEntity);
+        domain.getParticipants().forEach(participant -> {
+            ConversationParticipantEntity participantEntity = new ConversationParticipantEntity();
+            participantEntity.setUserId(participant.getUserId().value());
+            participantEntity.setUnreadCount(participant.getUnreadCount());
+            participantEntity.setLastReadAt(participant.getLastReadAt());
+            participantEntity.setRole(participant.getRole());
+            entity.addParticipant(participantEntity);
         });
 
         return entity;

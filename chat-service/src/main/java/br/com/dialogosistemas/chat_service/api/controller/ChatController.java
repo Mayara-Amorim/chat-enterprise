@@ -1,16 +1,22 @@
 package br.com.dialogosistemas.chat_service.api.controller;
 
-import br.com.dialogosistemas.chat_service.application.DTO.*;
+import br.com.dialogosistemas.chat_service.application.DTO.ChatHistoryResponseDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.CreateConversationRequestDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.EditMessageRequestDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.InboxItemDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.SendMessageRequestDTO;
 import br.com.dialogosistemas.chat_service.application.usecase.CreateConversationUseCase;
+import br.com.dialogosistemas.chat_service.application.usecase.DeleteMessageUseCase;
+import br.com.dialogosistemas.chat_service.application.usecase.EditMessageUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.GetChatHistoryUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.GetInboxUseCase;
+import br.com.dialogosistemas.chat_service.application.usecase.MarkConversationAsReadUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.SendMessageUseCase;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import br.com.dialogosistemas.chat_service.application.usecase.MarkConversationAsReadUseCase;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,17 +30,25 @@ public class ChatController {
     private final GetChatHistoryUseCase getChatHistoryUseCase;
     private final GetInboxUseCase getInboxUseCase;
     private final MarkConversationAsReadUseCase markConversationAsReadUseCase;
-
+    private final DeleteMessageUseCase deleteMessageUseCase;
+    private final EditMessageUseCase editMessageUseCase;
 
     public ChatController(CreateConversationUseCase createConversationUseCase,
                           SendMessageUseCase sendMessageUseCase,
-                          GetChatHistoryUseCase getChatHistoryUseCase, GetInboxUseCase getInboxUseCase, MarkConversationAsReadUseCase markConversationAsReadUseCase) {
+                          GetChatHistoryUseCase getChatHistoryUseCase,
+                          GetInboxUseCase getInboxUseCase,
+                          MarkConversationAsReadUseCase markConversationAsReadUseCase,
+                          DeleteMessageUseCase deleteMessageUseCase,
+                          EditMessageUseCase editMessageUseCase) {
         this.createConversationUseCase = createConversationUseCase;
         this.sendMessageUseCase = sendMessageUseCase;
         this.getChatHistoryUseCase = getChatHistoryUseCase;
         this.getInboxUseCase = getInboxUseCase;
         this.markConversationAsReadUseCase = markConversationAsReadUseCase;
+        this.deleteMessageUseCase = deleteMessageUseCase;
+        this.editMessageUseCase = editMessageUseCase;
     }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public void createConversation(@RequestBody CreateConversationRequestDTO request,
@@ -52,23 +66,43 @@ public class ChatController {
     @ResponseStatus(HttpStatus.CREATED)
     public void sendMessage(@RequestBody SendMessageRequestDTO request,
                             @AuthenticationPrincipal Jwt jwt) {
-
         UUID senderId = UUID.fromString(jwt.getSubject());
         sendMessageUseCase.execute(request, senderId);
     }
 
     @GetMapping("/{conversationId}/messages")
-    public ResponseEntity<List<MessageDTO>> getChatHistory(
+    public ResponseEntity<ChatHistoryResponseDTO> getChatHistory(
             @PathVariable UUID conversationId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int limit,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID loggedUserId = UUID.fromString(jwt.getSubject());
-
-        List<MessageDTO> history = getChatHistoryUseCase.execute(conversationId, loggedUserId, page, size);
-
+        ChatHistoryResponseDTO history = getChatHistoryUseCase.execute(conversationId, loggedUserId, cursor, limit);
         return ResponseEntity.ok(history);
+    }
+
+    @DeleteMapping("/{conversationId}/messages/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @PathVariable UUID conversationId,
+            @PathVariable UUID messageId,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID requesterId = UUID.fromString(jwt.getSubject());
+        deleteMessageUseCase.execute(conversationId, messageId, requesterId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{conversationId}/messages/{messageId}")
+    public ResponseEntity<Void> editMessage(
+            @PathVariable UUID conversationId,
+            @PathVariable UUID messageId,
+            @RequestBody EditMessageRequestDTO request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID requesterId = UUID.fromString(jwt.getSubject());
+        editMessageUseCase.execute(conversationId, messageId, requesterId, request.content());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/inbox")

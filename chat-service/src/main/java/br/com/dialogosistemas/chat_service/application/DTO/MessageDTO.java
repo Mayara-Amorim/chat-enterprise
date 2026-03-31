@@ -14,7 +14,7 @@ public record MessageDTO(
     public static MessageDTO fromEntity(MessageEntity entity) {
         return new MessageDTO(
                 entity.getId(),
-                entity.getContent(),
+                entity.getDeletedAt() != null ? null : entity.getContent(),
                 entity.getSenderId().toString(),
                 entity.getCreatedAt(),
                 entity.getStatus().name()

@@ -42,15 +42,22 @@ public class ConversationEntity {
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ConversationParticipantEntity> participants = new HashSet<>();
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+
     public ConversationEntity() {}
 
-    public ConversationEntity(UUID id, UUID tenantId, ConversationType type, String title, UUID creatorId, Instant createdAt) {
+    public ConversationEntity(UUID id, UUID tenantId, ConversationType type, String title, UUID creatorId, Instant createdAt, String lastMessageContent, Instant lastMessageAt, String description) {
         this.id = id;
         this.tenantId = tenantId;
         this.type = type;
         this.title = title;
         this.creatorId = creatorId;
         this.createdAt = createdAt;
+        this.lastMessageContent = lastMessageContent;
+        this.lastMessageAt = lastMessageAt;
+        this.description = description;
     }
 
     public void addParticipant(ConversationParticipantEntity participantEntity) {
@@ -78,6 +85,10 @@ public class ConversationEntity {
     public void setLastMessageContent(String lastMessageContent) { this.lastMessageContent = lastMessageContent; }
     public Set<ConversationParticipantEntity> getParticipants() { return participants; }
     public void setParticipants(Set<ConversationParticipantEntity> participants) { this.participants = participants; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+
 
     @Override
     public boolean equals(Object o) {
