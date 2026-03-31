@@ -1,0 +1,80 @@
+package br.com.dialogosistemas.chat_service.infra.persistence.entity;
+
+import br.com.dialogosistemas.chat_service.domain.model.conversation.ParticipantRole;
+import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+
+@Entity
+@Table(name = "conversation_participants")
+public class ConversationParticipantEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_id", nullable = false)
+    private ConversationEntity conversation;
+
+    @Column(name = "unread_count", nullable = false)
+    private Integer unreadCount = 0;
+
+    @Column(name = "last_read_at")
+    private Instant lastReadAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'MEMBER'")
+    private ParticipantRole role;
+
+    public ConversationParticipantEntity() {}
+
+    public ConversationParticipantEntity(UUID userId, Integer unreadCount, Instant lastReadAt, ParticipantRole role) {
+        this.userId = userId;
+        this.unreadCount = unreadCount != null ? unreadCount : 0;
+        this.lastReadAt = lastReadAt;
+        this.role = role != null ? role : ParticipantRole.MEMBER;
+    }
+
+    // Método utilitário para o Hibernate gerenciar relacionamento bidirecional
+    public void assignConversation(ConversationEntity conversation) {
+        this.conversation = conversation;
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public ConversationEntity getConversation() { return conversation; }
+    public void setConversation(ConversationEntity conversation) { this.conversation = conversation; }
+    public Integer getUnreadCount() { return unreadCount; }
+    public void setUnreadCount(Integer unreadCount) { this.unreadCount = unreadCount; }
+    public Instant getLastReadAt() { return lastReadAt; }
+    public void setLastReadAt(Instant lastReadAt) { this.lastReadAt = lastReadAt; }
+    public ParticipantRole getRole() { return role; }
+    public void setRole(ParticipantRole role) { this.role = role != null ? role : ParticipantRole.MEMBER; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ConversationParticipantEntity that = (ConversationParticipantEntity) o;
+
+        // Se ambos têm ID do banco de dados, compara por ID
+        if (this.id != null && that.id != null) {
+            return this.id.equals(that.id);
+        }
+
+        // Caso contrário (objetos novos em memória), compara pela Chave de Negócio
+        return Objects.equals(this.userId, that.userId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(userId);
+    }
+}

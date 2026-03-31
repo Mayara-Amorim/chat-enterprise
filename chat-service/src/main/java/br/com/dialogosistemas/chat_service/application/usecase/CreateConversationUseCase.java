@@ -2,50 +2,85 @@ package br.com.dialogosistemas.chat_service.application.usecase;
 
 import br.com.dialogosistemas.chat_service.application.DTO.ConversationResponseDTO;
 import br.com.dialogosistemas.chat_service.application.DTO.CreateConversationRequestDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.MessageSentEventDTO;
 import br.com.dialogosistemas.chat_service.domain.gateway.ConversationGateway;
+import br.com.dialogosistemas.chat_service.domain.gateway.MessageGateway;
 import br.com.dialogosistemas.chat_service.domain.model.conversation.Conversation;
+import br.com.dialogosistemas.chat_service.domain.model.conversation.ConversationType;
+import br.com.dialogosistemas.chat_service.domain.model.message.Message;
+import br.com.dialogosistemas.chat_service.infra.messaging.ChatKafkaProducer;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.TenantId;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class CreateConversationUseCase {
 
-    private final ConversationGateway conversationGateway;
+    private static final String GROUP_RULES_PREFIX = "Regras do Grupo:\n";
 
-    public CreateConversationUseCase(ConversationGateway conversationGateway) {
+    private final ConversationGateway conversationGateway;
+    private final MessageGateway messageGateway;
+    private final ChatKafkaProducer chatKafkaProducer;
+
+    public CreateConversationUseCase(ConversationGateway conversationGateway,
+                                     MessageGateway messageGateway,
+                                     ChatKafkaProducer chatKafkaProducer) {
         this.conversationGateway = conversationGateway;
+        this.messageGateway = messageGateway;
+        this.chatKafkaProducer = chatKafkaProducer;
     }
 
     @Transactional
     public ConversationResponseDTO execute(CreateConversationRequestDTO request, UUID tenantId, UUID creatorId) {
-        // 1. Converter IDs brutos para Value Objects
         TenantId tenant = new TenantId(tenantId);
         UserId creator = new UserId(creatorId);
+        ConversationType conversationType = ConversationType.valueOf(request.type().trim().toUpperCase(Locale.ROOT));
+        Set<UserId> participantIds = request.participants().stream()
+                .map(UserId::new)
+                .collect(Collectors.toSet());
 
-        // 2. Criar a Entidade de Domínio (aqui as regras de negócio são validadas)
-        Conversation conversation;
+        Conversation conversation = switch (conversationType) {
+            case GROUP -> Conversation.createGroup(
+                    tenant,
+                    request.title(),
+                    request.description(),
+                    creator,
+                    participantIds
+            );
+            case INDIVIDUAL -> Conversation.createIndividual(tenant, creator, participantIds.iterator().next());
+            default -> throw new IllegalArgumentException("Conversation type not supported: " + request.type());
+        };
 
-        if ("GROUP".equalsIgnoreCase(request.type())) {
-            var participants = request.participants().stream()
-                    .map(UserId::new)
-                    .collect(Collectors.toSet());
+        Conversation savedConversation = conversationGateway.save(conversation);
 
-            conversation = Conversation.createGroup(tenant, creator, request.title(), participants);
-        } else {
-            // Assumindo que para individual vem apenas 1 ID na lista
-            UUID otherUserId = request.participants().iterator().next();
-            conversation = Conversation.createIndividual(tenant, creator, new UserId(otherUserId));
+        if (conversationType == ConversationType.GROUP && hasGroupRules(request.description())) {
+            Message rulesMessage = Message.create(savedConversation.getId(), creator, GROUP_RULES_PREFIX + request.description());
+            messageGateway.save(rulesMessage, savedConversation.getId());
+            conversationGateway.updateLastMessage(
+                    savedConversation.getId(),
+                    rulesMessage.getContent(),
+                    rulesMessage.getCreatedAt()
+            );
+
+            chatKafkaProducer.send(new MessageSentEventDTO(
+                    rulesMessage.getId().value(),
+                    savedConversation.getId().value(),
+                    creator.value(),
+                    rulesMessage.getContent(),
+                    rulesMessage.getCreatedAt()
+            ));
         }
 
-        // 3. Persistir via Gateway
-        Conversation saved = conversationGateway.save(conversation);
+        return ConversationResponseDTO.fromDomain(savedConversation);
+    }
 
-        // 4. Retornar DTO
-        return ConversationResponseDTO.fromDomain(saved);
+    private boolean hasGroupRules(String description) {
+        return description != null && !description.isBlank();
     }
 }

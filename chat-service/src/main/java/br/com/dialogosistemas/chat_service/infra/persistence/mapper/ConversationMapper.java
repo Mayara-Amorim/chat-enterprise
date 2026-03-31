@@ -1,82 +1,64 @@
 package br.com.dialogosistemas.chat_service.infra.persistence.mapper;
 
 import br.com.dialogosistemas.chat_service.domain.model.conversation.Conversation;
-import br.com.dialogosistemas.chat_service.domain.model.message.Message;
+import br.com.dialogosistemas.chat_service.domain.model.conversation.ConversationParticipant;
 import br.com.dialogosistemas.chat_service.domain.valueObject.ConversationId;
 import br.com.dialogosistemas.chat_service.infra.persistence.entity.ConversationEntity;
-import br.com.dialogosistemas.chat_service.infra.persistence.entity.MessageEntity;
-
+import br.com.dialogosistemas.chat_service.infra.persistence.entity.ConversationParticipantEntity;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.TenantId;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
 public class ConversationMapper {
 
     public Conversation toDomain(ConversationEntity entity) {
-        // Converte IDs brutos para Value Objects
-        Set<UserId> participants = entity.getParticipantIds().stream()
-                .map(uuid -> new UserId(uuid))
+        Set<ConversationParticipant> participants = entity.getParticipants().stream()
+                .map(participant -> new ConversationParticipant(
+                        new UserId(participant.getUserId()),
+                        participant.getUnreadCount(),
+                        participant.getLastReadAt(),
+                        participant.getRole()
+                ))
                 .collect(Collectors.toSet());
 
-        UserId creator = new UserId(entity.getCreatorId());
-        TenantId tenant = new TenantId(entity.getTenantId());
-       ConversationId convId = new ConversationId(entity.getId());
-
-        // Reconstrói o Aggregate Root
-        Conversation conversation = new Conversation(
-                convId,
-                tenant,
+        return new Conversation(
+                new ConversationId(entity.getId()),
+                new TenantId(entity.getTenantId()),
                 entity.getType(),
                 entity.getTitle(),
+                entity.getDescription(),
+                entity.getCreatedAt(),
+                new UserId(entity.getCreatorId()),
                 participants,
-                creator,
-                entity.getCreatedAt()
+                entity.getLastMessageContent(),
+                entity.getLastMessageAt()
         );
-
-
-        return conversation;
     }
 
     public ConversationEntity toEntity(Conversation domain) {
-        ConversationEntity entity = new ConversationEntity(
-                domain.getId().value(),
-                domain.getTenantId().value(),
-                domain.getTenantId().toString().isEmpty() ? null : null, // (ajuste técnico)
-                null, // title ajustado abaixo
-                domain.getCreatorId().value(),
-                domain.getCreatedAt() // Ajuste se não tiver getCreatedAt no domain, adicione lá
-        );
-
-        // Ajustes finos
+        ConversationEntity entity = new ConversationEntity();
+        entity.setId(domain.getId().value());
         entity.setTenantId(domain.getTenantId().value());
-        entity.setType(domain.getType()); // Assumindo getter no domain
-        entity.setTitle(domain.getTitle()); // Assumindo getter no domain
+        entity.setType(domain.getType());
+        entity.setTitle(domain.getTitle());
+        entity.setDescription(domain.getDescription());
+        entity.setCreatorId(domain.getCreatorId().value());
+        entity.setCreatedAt(domain.getCreatedAt());
+        entity.setLastMessageContent(domain.getLastMessagePreview());
+        entity.setLastMessageAt(domain.getLastMessageAt());
 
-        // Mapeia participantes
-        Set<UUID> ids = domain.getParticipants().stream() // Assumindo getter público para participants
-                .map(UserId::value)
-                .collect(Collectors.toSet());
-        entity.setParticipantIds(ids);
-
-        // Mapeia mensagens (novas)
-        // salvamos mensagens separadas, mas se for cascata:
-        if (domain.getUnmodifiableMessages() != null) {
-            var messageEntities = domain.getUnmodifiableMessages().stream()
-                    .map(msg -> new MessageEntity(
-                            msg.getId().value(),
-                            entity, // Associa a entidade pai
-                            msg.getSenderId().value(),
-                            msg.getContent(),
-                            msg.getStatus(),
-                            msg.getCreatedAt()
-                    )).collect(Collectors.toList());
-            entity.setMessages(messageEntities);
-        }
+        domain.getParticipants().forEach(participant -> {
+            ConversationParticipantEntity participantEntity = new ConversationParticipantEntity();
+            participantEntity.setUserId(participant.getUserId().value());
+            participantEntity.setUnreadCount(participant.getUnreadCount());
+            participantEntity.setLastReadAt(participant.getLastReadAt());
+            participantEntity.setRole(participant.getRole());
+            entity.addParticipant(participantEntity);
+        });
 
         return entity;
     }

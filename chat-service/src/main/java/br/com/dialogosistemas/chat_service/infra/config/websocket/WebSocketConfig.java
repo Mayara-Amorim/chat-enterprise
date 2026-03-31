@@ -1,6 +1,8 @@
 package br.com.dialogosistemas.chat_service.infra.config.websocket;
 
+import br.com.dialogosistemas.chat_service.api.websocket.WebSocketAuthInterceptor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -9,6 +11,11 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    private final WebSocketAuthInterceptor authInterceptor;
+
+    public WebSocketConfig(WebSocketAuthInterceptor authInterceptor) {
+        this.authInterceptor = authInterceptor;
+    }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -27,5 +34,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*"); // Permite conexões de qualquer lugar (CORS dev)
         //.withSockJS(); // Removido por enquanto para testar com clientes STOMP puros
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(authInterceptor);
     }
 }

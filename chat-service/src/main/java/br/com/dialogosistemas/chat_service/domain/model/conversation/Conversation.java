@@ -4,116 +4,136 @@ import br.com.dialogosistemas.chat_service.domain.model.message.Message;
 import br.com.dialogosistemas.chat_service.domain.valueObject.ConversationId;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.TenantId;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
-import com.fasterxml.jackson.annotation.JacksonInject;
-
 
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 public class Conversation {
 
     private final ConversationId id;
     private final TenantId tenantId;
     private final ConversationType type;
-    private String title; // Opcional para INDIVIDUAL
-    private final Set<UserId> participants;
-    private final List<Message> messages; // Em memória, carrega apenas as recentes (lazy loading na infra)
+    private String title;
+    private String description;
+    private final Set<ConversationParticipant> participants;
+    private final List<Message> messages;
     private final UserId creatorId;
     private final Instant createdAt;
+    private String lastMessagePreview;
+    private Instant lastMessageAt;
 
-    // Construtor completo para Reconstituição (via Banco de Dados)
-    public Conversation(ConversationId id, TenantId tenantId, ConversationType type, String title, Set<UserId> participants, UserId creatorId, Instant createdAt) {
+    public Conversation(ConversationId id,
+                        TenantId tenantId,
+                        ConversationType type,
+                        String title,
+                        String description,
+                        Instant createdAt,
+                        UserId creatorId,
+                        Set<ConversationParticipant> participants,
+                        String lastMessagePreview,
+                        Instant lastMessageAt) {
         this.id = id;
         this.tenantId = tenantId;
         this.type = type;
         this.title = title;
-        this.participants = participants;
-        this.creatorId = creatorId;
+        this.description = description;
         this.createdAt = createdAt;
+        this.creatorId = creatorId;
+        this.participants = new HashSet<>(participants);
         this.messages = new ArrayList<>();
+        this.lastMessagePreview = lastMessagePreview;
+        this.lastMessageAt = lastMessageAt;
     }
 
-    // Factory: Criar Conversa Individual
     public static Conversation createIndividual(TenantId tenantId, UserId creator, UserId otherParticipant) {
-        Set<UserId> participants = new HashSet<>();
-        participants.add(creator);
-        participants.add(otherParticipant);
+        Set<ConversationParticipant> participants = new HashSet<>();
+        participants.add(ConversationParticipant.create(creator, ParticipantRole.MEMBER));
+        participants.add(ConversationParticipant.create(otherParticipant, ParticipantRole.MEMBER));
 
         return new Conversation(
                 new ConversationId(UUID.randomUUID()),
                 tenantId,
                 ConversationType.INDIVIDUAL,
                 null,
-                participants,
+                null,
+                Instant.now(),
                 creator,
-                Instant.now()
+                participants,
+                null,
+                null
         );
     }
 
-    public static Conversation createGroup(TenantId tenantId, UserId creator, String groupTitle, Set<UserId> initialParticipants) {
-        if (groupTitle == null || groupTitle.isBlank()) {
-            throw new IllegalArgumentException("Group title is required");
-        }
+    public static Conversation createGroup(TenantId tenantId,
+                                           String title,
+                                           String description,
+                                           UserId creatorId,
+                                           Set<UserId> memberIds) {
+        Set<ConversationParticipant> participants = new HashSet<>();
+        participants.add(ConversationParticipant.create(creatorId, ParticipantRole.ADMIN));
 
-        Set<UserId> allParticipants = new HashSet<>(initialParticipants);
-        allParticipants.add(creator); // Garante que o criador está no grupo
+        memberIds.forEach(memberId -> {
+            if (!memberId.equals(creatorId)) {
+                participants.add(ConversationParticipant.create(memberId, ParticipantRole.MEMBER));
+            }
+        });
 
         return new Conversation(
                 new ConversationId(UUID.randomUUID()),
                 tenantId,
                 ConversationType.GROUP,
-                groupTitle,
-                allParticipants,
-                creator,
-                Instant.now()
+                title,
+                description,
+                Instant.now(),
+                creatorId,
+                participants,
+                null,
+                null
         );
     }
 
     public Message addMessage(UserId senderId, String content) {
-        if (!participants.contains(senderId)) {
+        boolean isParticipant = participants.stream().anyMatch(participant -> participant.getUserId().equals(senderId));
+        if (!isParticipant) {
             throw new IllegalStateException("User is not a participant of this conversation");
         }
 
-        Message newMessage = Message.create(senderId, content);
+        Message newMessage = Message.create(this.id, senderId, content);
         this.messages.add(newMessage);
+        this.lastMessagePreview = content;
+        this.lastMessageAt = newMessage.getCreatedAt();
+
+        this.participants.stream()
+                .filter(participant -> !participant.getUserId().equals(senderId))
+                .forEach(ConversationParticipant::incrementUnreadCount);
+
         return newMessage;
     }
 
-    // Adicionar Participante (Regra: só em grupos)
-    public void addParticipant(UserId requesterId, UserId newParticipant) {
-        if (this.type != ConversationType.GROUP) {
-            throw new IllegalStateException("Cannot add participants to individual conversation");
-        }
-        // Futuro: Validar se requester é ADMIN
-        this.participants.add(newParticipant);
+    public void markParticipantAsRead(UserId userId) {
+        this.participants.stream()
+                .filter(participant -> participant.getUserId().equals(userId))
+                .findFirst()
+                .ifPresent(ConversationParticipant::markAsRead);
     }
 
+    public void setTitle(String title) { this.title = title; }
+    public List<Message> getMessages() { return messages; }
+    public void setLastMessagePreview(String preview) { this.lastMessagePreview = preview; }
+    public void setLastMessageAt(Instant at) { this.lastMessageAt = at; }
+    public String getLastMessagePreview() { return lastMessagePreview; }
+    public Instant getLastMessageAt() { return lastMessageAt; }
     public ConversationId getId() { return id; }
     public TenantId getTenantId() { return tenantId; }
-    public List<Message> getUnmodifiableMessages() { return Collections.unmodifiableList(messages); }
-
-    public UserId getCreatorId() {
-        return creatorId;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public ConversationType getType() {
-        return type;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    /**
-     * Retorna uma visualização imutável dos participantes.
-     * Isso impede que classes externas (como o Mapper) adicionem usuários diretamente na lista,
-     * furando a validação do método addParticipant().
-     */
-    public Set<UserId> getParticipants() {
-        return Collections.unmodifiableSet(participants);
-    }
+    public UserId getCreatorId() { return creatorId; }
+    public Instant getCreatedAt() { return createdAt; }
+    public ConversationType getType() { return type; }
+    public String getTitle() { return title; }
+    public String getDescription() { return description; }
+    public Set<ConversationParticipant> getParticipants() { return Collections.unmodifiableSet(participants); }
 }
