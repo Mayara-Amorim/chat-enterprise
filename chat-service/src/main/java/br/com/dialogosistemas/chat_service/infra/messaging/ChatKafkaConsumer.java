@@ -1,6 +1,7 @@
 package br.com.dialogosistemas.chat_service.infra.messaging;
 
 import br.com.dialogosistemas.chat_service.application.DTO.MessageSentEventDTO;
+import br.com.dialogosistemas.chat_service.application.DTO.MessageStatusUpdatedEventDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -29,5 +30,16 @@ public class ChatKafkaConsumer {
         websocketTemplate.convertAndSend(destination, event);
 
         logger.info("📡 Encaminhado para WebSocket: {}", destination);
+    }
+
+    @KafkaListener(topics = "chat-message-status-events", groupId = "chat-service-group")
+    public void consumeStatusUpdate(MessageStatusUpdatedEventDTO event) {
+        System.out.println("DEBUG: 📥 Kafka recebeu atualização de status: " + event);
+
+        // Roteia para um sub-tópico específico de status da conversa
+        String destination = "/topic/chat." + event.conversationId() + ".status";
+
+        websocketTemplate.convertAndSend(destination, event);
+        System.out.println("DEBUG: 📡 Status encaminhado para WebSocket no canal: " + destination);
     }
 }
