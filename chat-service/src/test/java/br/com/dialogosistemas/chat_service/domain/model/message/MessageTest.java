@@ -6,6 +6,7 @@ import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -78,6 +79,68 @@ class MessageTest {
         );
 
         assertEquals("A mensagem apagada n\u00E3o pode ser editada.", exception.getMessage());
+    }
+
+    @Test
+    void deve_criar_mensagem_com_attachments_sem_content() {
+        Attachment att = new Attachment(
+                UUID.randomUUID(), "file.pdf", "application/pdf",
+                5000L, "tenants/t/conv/c/file.pdf", Instant.now()
+        );
+        Message msg = Message.createWithAttachments(
+                new ConversationId(UUID.randomUUID()),
+                new UserId(UUID.randomUUID()),
+                null,
+                List.of(att)
+        );
+
+        assertNull(msg.getContent());
+        assertEquals(1, msg.getAttachments().size());
+    }
+
+    @Test
+    void deve_criar_mensagem_com_content_e_attachments() {
+        Attachment att = new Attachment(
+                UUID.randomUUID(), "img.png", "image/png",
+                1024L, "path/img.png", Instant.now()
+        );
+        Message msg = Message.createWithAttachments(
+                new ConversationId(UUID.randomUUID()),
+                new UserId(UUID.randomUUID()),
+                "Olha essa foto",
+                List.of(att)
+        );
+
+        assertEquals("Olha essa foto", msg.getContent());
+        assertEquals(1, msg.getAttachments().size());
+    }
+
+    @Test
+    void deve_rejeitar_mensagem_sem_content_e_sem_attachments() {
+        assertThrows(IllegalArgumentException.class, () ->
+                Message.createWithAttachments(
+                        new ConversationId(UUID.randomUUID()),
+                        new UserId(UUID.randomUUID()),
+                        null,
+                        List.of()
+                )
+        );
+    }
+
+    @Test
+    void deve_rejeitar_mais_de_10_attachments() {
+        List<Attachment> attachments = java.util.stream.IntStream.range(0, 11)
+                .mapToObj(i -> new Attachment(UUID.randomUUID(), "f" + i + ".jpg", "image/jpeg", 1024L, "p/" + i, Instant.now()))
+                .toList();
+
+        assertThrows(IllegalArgumentException.class, () ->
+                Message.createWithAttachments(
+                        new ConversationId(UUID.randomUUID()),
+                        new UserId(UUID.randomUUID()),
+                        "caption",
+                        attachments
+                )
+        );
     }
 
     private Message message(UserId author) {

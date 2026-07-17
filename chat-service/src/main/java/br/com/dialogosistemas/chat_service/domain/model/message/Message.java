@@ -7,6 +7,7 @@ import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ public class Message {
     private Instant editedAt;
     private Instant deletedAt;
     private UserId deletedBy;
+    private final List<Attachment> attachments;
 
     public Message(MessageId id,
                    ConversationId conversationId,
@@ -30,7 +32,7 @@ public class Message {
                    Instant createdAt,
                    MessageStatus status,
                    Set<MessageReadReceipt> readReceipts) {
-        this(id, conversationId, senderId, content, createdAt, status, readReceipts, null, null, null);
+        this(id, conversationId, senderId, content, createdAt, status, readReceipts, null, null, null, null);
     }
 
     public Message(MessageId id,
@@ -42,7 +44,7 @@ public class Message {
                    Set<MessageReadReceipt> readReceipts,
                    Instant deletedAt,
                    UserId deletedBy) {
-        this(id, conversationId, senderId, content, createdAt, status, readReceipts, null, deletedAt, deletedBy);
+        this(id, conversationId, senderId, content, createdAt, status, readReceipts, null, deletedAt, deletedBy, null);
     }
 
     public Message(MessageId id,
@@ -55,6 +57,20 @@ public class Message {
                    Instant editedAt,
                    Instant deletedAt,
                    UserId deletedBy) {
+        this(id, conversationId, senderId, content, createdAt, status, readReceipts, editedAt, deletedAt, deletedBy, null);
+    }
+
+    public Message(MessageId id,
+                   ConversationId conversationId,
+                   UserId senderId,
+                   String content,
+                   Instant createdAt,
+                   MessageStatus status,
+                   Set<MessageReadReceipt> readReceipts,
+                   Instant editedAt,
+                   Instant deletedAt,
+                   UserId deletedBy,
+                   List<Attachment> attachments) {
         this.id = id;
         this.conversationId = conversationId;
         this.senderId = senderId;
@@ -65,6 +81,7 @@ public class Message {
         this.editedAt = editedAt;
         this.deletedAt = deletedAt;
         this.deletedBy = deletedBy;
+        this.attachments = attachments != null ? List.copyOf(attachments) : List.of();
     }
 
     public static Message create(ConversationId conversationId, UserId senderId, String content) {
@@ -138,4 +155,26 @@ public class Message {
     public Instant getEditedAt() { return editedAt; }
     public Instant getDeletedAt() { return deletedAt; }
     public UserId getDeletedBy() { return deletedBy; }
+    public List<Attachment> getAttachments() { return attachments; }
+
+    public static Message createWithAttachments(ConversationId conversationId, UserId senderId, String content, List<Attachment> attachments) {
+        if ((content == null || content.isBlank()) && (attachments == null || attachments.isEmpty())) {
+            throw new IllegalArgumentException("Message must have content or attachments");
+        }
+        if (attachments != null && attachments.size() > 10) {
+            throw new IllegalArgumentException("Maximum 10 attachments per message");
+        }
+
+        return new Message(
+                new MessageId(UUID.randomUUID()),
+                conversationId,
+                senderId,
+                content,
+                Instant.now(),
+                MessageStatus.SENT,
+                new HashSet<>(),
+                null, null, null,
+                attachments != null ? List.copyOf(attachments) : List.of()
+        );
+    }
 }
