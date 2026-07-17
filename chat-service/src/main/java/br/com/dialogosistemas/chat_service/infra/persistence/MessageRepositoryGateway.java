@@ -1,12 +1,14 @@
 package br.com.dialogosistemas.chat_service.infra.persistence;
 
 import br.com.dialogosistemas.chat_service.domain.gateway.MessageGateway;
+import br.com.dialogosistemas.chat_service.domain.model.message.Attachment;
 import br.com.dialogosistemas.chat_service.domain.model.message.Message;
 import br.com.dialogosistemas.chat_service.domain.model.message.MessageReadReceipt;
 import br.com.dialogosistemas.chat_service.domain.model.message.MessageStatus;
 import br.com.dialogosistemas.chat_service.domain.valueObject.ConversationId;
 import br.com.dialogosistemas.chat_service.domain.valueObject.MessageId;
 import br.com.dialogosistemas.chat_service.infra.persistence.entity.ConversationEntity;
+import br.com.dialogosistemas.chat_service.infra.persistence.entity.MessageAttachmentEntity;
 import br.com.dialogosistemas.chat_service.infra.persistence.entity.MessageEntity;
 import br.com.dialogosistemas.chat_service.infra.persistence.entity.MessageReadReceiptEntity;
 import br.com.dialogosistemas.chat_service.infra.persistence.repository.ConversationJpaRepository;
@@ -113,6 +115,13 @@ public class MessageRepositoryGateway implements MessageGateway {
                 .map(receipt -> new MessageReadReceipt(new UserId(receipt.getUserId()), receipt.getReadAt()))
                 .collect(Collectors.toSet());
 
+        List<Attachment> attachments = entity.getAttachments().stream()
+                .map(ae -> new Attachment(
+                        ae.getId(), ae.getOriginalFileName(), ae.getContentType(),
+                        ae.getSizeInBytes(), ae.getStoragePath(), ae.getUploadedAt()
+                ))
+                .toList();
+
         return new Message(
                 new MessageId(entity.getId()),
                 new ConversationId(entity.getConversation().getId()),
@@ -123,7 +132,8 @@ public class MessageRepositoryGateway implements MessageGateway {
                 receipts,
                 entity.getEditedAt(),
                 entity.getDeletedAt(),
-                entity.getDeletedBy() != null ? new UserId(entity.getDeletedBy()) : null
+                entity.getDeletedBy() != null ? new UserId(entity.getDeletedBy()) : null,
+                attachments
         );
     }
 
@@ -142,6 +152,13 @@ public class MessageRepositoryGateway implements MessageGateway {
         domain.getReadReceipts().forEach(receipt ->
                 entity.addReadReceipt(new MessageReadReceiptEntity(receipt.getUserId().value(), receipt.getReadAt()))
         );
+        for (Attachment att : domain.getAttachments()) {
+            MessageAttachmentEntity attEntity = new MessageAttachmentEntity(
+                    att.fileId(), entity, att.originalFileName(),
+                    att.contentType(), att.sizeInBytes(), att.storagePath(), att.uploadedAt()
+            );
+            entity.addAttachment(attEntity);
+        }
         return entity;
     }
 }

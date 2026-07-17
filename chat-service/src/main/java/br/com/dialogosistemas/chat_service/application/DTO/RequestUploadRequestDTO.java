@@ -2,7 +2,9 @@ package br.com.dialogosistemas.chat_service.application.DTO;
 
 import java.util.UUID;
 
-public record SendMessageRequestDTO(
+public record RequestUploadRequestDTO(
         UUID conversationId,
-        String content
+        String fileName,
+        String contentType,
+        long sizeInBytes
 ) {}

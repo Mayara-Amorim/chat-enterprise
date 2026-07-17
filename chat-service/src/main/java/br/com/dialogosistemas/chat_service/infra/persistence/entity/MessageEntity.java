@@ -4,7 +4,9 @@ import br.com.dialogosistemas.chat_service.domain.model.message.MessageStatus;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -25,6 +27,9 @@ public class MessageEntity {
 
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MessageReadReceiptEntity> readReceipts = new HashSet<>();
+
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MessageAttachmentEntity> attachments = new ArrayList<>();
 
     @Column(name = "sender_id", nullable = false)
     private UUID senderId;
@@ -94,6 +99,13 @@ public class MessageEntity {
 
     public Set<MessageReadReceiptEntity> getReadReceipts() {
         return readReceipts;
+    }
+
+    public List<MessageAttachmentEntity> getAttachments() { return attachments; }
+
+    public void addAttachment(MessageAttachmentEntity attachment) {
+        this.attachments.add(attachment);
+        attachment.setMessage(this);
     }
 
     @Override
