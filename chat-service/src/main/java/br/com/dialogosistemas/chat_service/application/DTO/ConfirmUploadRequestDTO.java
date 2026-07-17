@@ -1,8 +1,10 @@
 package br.com.dialogosistemas.chat_service.application.DTO;
 
+import java.util.List;
 import java.util.UUID;
 
-public record SendMessageRequestDTO(
+public record ConfirmUploadRequestDTO(
         UUID conversationId,
-        String content
+        List<UUID> uploadIds,
+        String caption
 ) {}
