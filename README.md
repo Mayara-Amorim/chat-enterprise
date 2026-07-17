@@ -1,6 +1,8 @@
 <div align="center">
 
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=40&duration=3000&pause=1000&color=A855F7&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=100&lines=Chat+Platform;Real-Time+%E2%80%A2+Multi-Tenant+%E2%80%A2+Event" alt="Chat Platform" />
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=32&duration=2500&pause=1200&color=00D4AA&center=true&vCenter=true&repeat=true&width=580&height=45&lines=Chat+Platform" alt="Chat Platform" />
+  <br />
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=400&size=16&duration=2500&pause=1200&color=58A6FF&center=true&vCenter=true&repeat=true&width=420&height=25&lines=Real-Time+%E2%80%A2+Multi-Tenant+%E2%80%A2+Event-Driven" alt="subtitle" />
 
   <br />
 
