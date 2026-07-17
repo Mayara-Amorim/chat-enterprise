@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.iws
+*.iml
+*.ipr
+
+# Build output (re-built inside Docker)
+**/target/
+
+# Environment & Secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
+
+# Docs
+docs/
+HELP.md
+CLAUDE.md
+.claude/
+
+# Docker
+**/Dockerfile
+docker-compose.yml

@@ -1,0 +1,179 @@
+# ============================================
+# Chat Platform — Docker Compose (dev local)
+# ============================================
+#
+# DOIS MODOS DE USO:
+#
+#   1. So infra (voce roda os servicos Java via mvn spring-boot:run):
+#      docker compose up -d postgres-auth postgres-chat kafka redis
+#
+#   2. Tudo (infra + servicos Java, tudo em container):
+#      docker compose up -d --build
+#
+# O .env na raiz e lido automaticamente e injeta as variaveis abaixo.
+#
+# REDE INTERNA:
+#   Dentro do Docker Compose, containers se comunicam pelo NOME do servico.
+#   Ex: o chat-service acessa o Kafka em "kafka:29092", nao "localhost:9092".
+#   As portas mapeadas (ex: 9092:29092) so servem para VOCE acessar de fora.
+#
+# ============================================
+
+services:
+
+  # ------------------------------------------
+  # INFRA: Banco de dados, Kafka, Redis
+  # ------------------------------------------
+
+  # Postgres do auth-service
+  postgres-auth:
+    image: postgres:18.0
+    container_name: chat-postgres-auth
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: auth_db
+    ports:
+      - "5433:5432"       # Acessivel de fora em localhost:5433
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Postgres do chat-service
+  postgres-chat:
+    image: postgres:18.0
+    container_name: chat-postgres-chat
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"       # Acessivel de fora em localhost:5432
+    volumes:
+      - postgres_chat_data:/var/lib/postgresql/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Zookeeper (necessario para o Kafka)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: chat-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - chat-network
+
+  # Kafka — broker de mensageria
+  # LISTENERS explicacao:
+  #   INTERNAL (kafka:29092) — usado pelos containers dentro da rede Docker
+  #   EXTERNAL (localhost:9092) — usado por voce rodando mvn spring-boot:run fora do Docker
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: chat-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"       # Acessivel de fora em localhost:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis — cache e sessoes
+  redis:
+    image: redis:alpine
+    container_name: chat-redis
+    ports:
+      - "6379:6379"       # Acessivel de fora em localhost:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ------------------------------------------
+  # SERVICOS JAVA (build local via Dockerfile)
+  # ------------------------------------------
+
+  # Auth Service — autenticacao e JWT
+  auth-service:
+    build:
+      context: .                          # Build a partir da raiz (precisa do parent pom + shared-kernel)
+      dockerfile: auth-service/Dockerfile
+    container_name: chat-auth-service
+    ports:
+      - "8080:8080"       # Acessivel de fora em localhost:8080
+    environment:
+      PORT: ${AUTH_PORT}
+      SPRING_DATASOURCE_URL: ${AUTH_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${AUTH_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${AUTH_DATASOURCE_PASSWORD}
+      AUTH_MASTER_KEY: ${AUTH_MASTER_KEY}
+    depends_on:
+      postgres-auth:
+        condition: service_healthy        # Espera o Postgres estar pronto
+    networks:
+      - chat-network
+
+  # Chat Service — mensagens, conversas, WebSocket
+  chat-service:
+    build:
+      context: .
+      dockerfile: chat-service/Dockerfile
+    container_name: chat-chat-service
+    ports:
+      - "8081:8081"       # Acessivel de fora em localhost:8081
+    environment:
+      PORT: ${CHAT_PORT}
+      SPRING_DATASOURCE_URL: ${CHAT_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${CHAT_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${CHAT_DATASOURCE_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${CHAT_KAFKA_BOOTSTRAP_SERVERS}
+      SPRING_REDIS_URL: ${CHAT_REDIS_URL}
+      JWT_JWKS_URI: ${CHAT_JWKS_URI}
+    depends_on:
+      postgres-chat:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started        # Precisa do JWKS endpoint
+    networks:
+      - chat-network
+
+volumes:
+  postgres_auth_data:
+  postgres_chat_data:
+  redis_data:
+
+networks:
+  chat-network:
+    driver: bridge
