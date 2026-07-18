@@ -17,10 +17,11 @@ public interface MessageJpaRepository extends JpaRepository<MessageEntity, UUID>
     @Query("SELECT m FROM MessageEntity m WHERE m.conversation.id = :conversationId ORDER BY m.createdAt DESC")
     List<MessageEntity> findByConversationId(@Param("conversationId") UUID conversationId, Pageable pageable);
 
-    @Query("SELECT m FROM MessageEntity m " +
-            "WHERE m.conversation.id = :conversationId " +
-            "AND (:cursorDate IS NULL OR m.createdAt < :cursorDate OR (m.createdAt = :cursorDate AND m.id < :cursorId)) " +
-            "ORDER BY m.createdAt DESC, m.id DESC")
+    @Query(value = "SELECT * FROM messages m " +
+            "WHERE m.conversation_id = :conversationId " +
+            "AND (CAST(:cursorDate AS TIMESTAMPTZ) IS NULL OR m.created_at < :cursorDate OR (m.created_at = :cursorDate AND m.id < :cursorId)) " +
+            "ORDER BY m.created_at DESC, m.id DESC",
+            nativeQuery = true)
     List<MessageEntity> findMessagesBeforeCursor(@Param("conversationId") UUID conversationId,
                                                  @Param("cursorDate") Instant cursorDate,
                                                  @Param("cursorId") UUID cursorId,

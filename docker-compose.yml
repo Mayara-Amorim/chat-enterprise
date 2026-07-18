@@ -36,7 +36,7 @@ services:
     ports:
       - "5433:5432"       # Acessivel de fora em localhost:5433
     volumes:
-      - postgres_auth_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql
     networks:
       - chat-network
     healthcheck:
@@ -55,7 +55,7 @@ services:
     ports:
       - "5432:5432"       # Acessivel de fora em localhost:5432
     volumes:
-      - postgres_chat_data:/var/lib/postgresql/data
+      - postgres_chat_data:/var/lib/postgresql
     networks:
       - chat-network
     healthcheck:
@@ -157,6 +157,10 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${CHAT_KAFKA_BOOTSTRAP_SERVERS}
       SPRING_REDIS_URL: ${CHAT_REDIS_URL}
       JWT_JWKS_URI: ${CHAT_JWKS_URI}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+      GCS_BUCKET: ${GCS_BUCKET}
+    volumes:
+      - ./docs/chat-enterprise-dev-9eaf1ea3c2e3.json:/gcp/credentials.json:ro
     depends_on:
       postgres-chat:
         condition: service_healthy
