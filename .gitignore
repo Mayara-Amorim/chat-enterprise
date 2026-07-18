@@ -51,3 +51,5 @@ CLAUDE.md
 
 ### Specs & Docs gerados ###
 docs/
+cookbook/
+.playwright-mcp/
