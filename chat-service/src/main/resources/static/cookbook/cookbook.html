@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Platform — Cookbook de Autenticação e Uso</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #F7F7F7;
+            color: #3B4151;
+            line-height: 1.7;
+        }
+
+        .cover {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #1B1B1B;
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(73, 204, 144, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(73, 144, 226, 0.06) 0%, transparent 50%);
+            text-align: center;
+            padding: 2rem;
+            page-break-after: always;
+            position: relative;
+        }
+
+        .cover::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+        }
+
+        .cover-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cover h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 0.3rem;
+            letter-spacing: -1px;
+        }
+
+        .cover h1 span {
+            color: #85EA2D;
+        }
+
+        .cover .subtitle {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .cover .divider {
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #49CC90, #4990E2);
+            border-radius: 2px;
+            margin: 0 auto 2.5rem;
+        }
+
+        .cover .badge-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .cover .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 999px;
+            padding: 0.5rem 1.2rem;
+            font-size: 0.85rem;
+            color: #CCC;
+            backdrop-filter: blur(4px);
+        }
+
+        .cover .badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .cover .meta {
+            color: #666;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #3B4151;
+            margin: 3rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #E8E8E8;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #3B4151;
+            margin: 2rem 0 0.8rem;
+        }
+
+        p {
+            color: #5B6477;
+            margin-bottom: 1rem;
+        }
+
+        .step {
+            background: #FFFFFF;
+            border: 1px solid #E8E8E8;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin: 1.5rem 0;
+            page-break-inside: avoid;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-number {
+            background: #49CC90;
+            color: white;
+            font-weight: 800;
+            font-size: 1.1rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #3B4151;
+        }
+
+        .endpoint {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #F7F7F7;
+            border: 1px solid #E8E8E8;
+            border-radius: 8px;
+            padding: 0.4rem 0.8rem;
+            margin: 0.5rem 0;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .method {
+            font-weight: 700;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        .method.post { background: #4990E2; }
+        .method.get { background: #49CC90; }
+        .method.patch { background: #FCA130; }
+        .method.delete { background: #F93E3E; }
+
+        .service-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .service-auth { background: #E8F4FD; color: #4990E2; }
+        .service-chat { background: #E6F9EE; color: #49CC90; }
+
+        .header-info {
+            background: #F7F7F7;
+            border-left: 3px solid #49CC90;
+            padding: 0.8rem 1rem;
+            border-radius: 0 8px 8px 0;
+            margin: 0.8rem 0;
+            font-size: 0.9rem;
+        }
+
+        .header-info code {
+            background: #1B1B1B;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #85EA2D;
+        }
+
+        pre {
+            background: #1B1B1B;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            overflow-x: auto;
+            margin: 0.8rem 0;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        pre code {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            color: #D4D4D4;
+        }
+
+        .json-key { color: #9CDCFE; }
+        .json-string { color: #CE9178; }
+        .json-number { color: #B5CEA8; }
+        .json-null { color: #569CD6; }
+
+        .alert {
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin: 0.8rem 0;
+            font-size: 0.9rem;
+        }
+
+        .alert-warning {
+            background: #FFF8E1;
+            border: 1px solid #FCA130;
+            color: #7A5A00;
+        }
+
+        .alert-info {
+            background: #E8F4FD;
+            border: 1px solid #4990E2;
+            color: #1A5276;
+        }
+
+        .alert-success {
+            background: #E6F9EE;
+            border: 1px solid #49CC90;
+            color: #1B6D3D;
+        }
+
+        .screenshot {
+            margin: 1.2rem 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #E8E8E8;
+        }
+
+        .screenshot img {
+            width: 100%;
+            display: block;
+        }
+
+        .screenshot-caption {
+            background: #FAFAFA;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            color: #888;
+            text-align: center;
+            border-top: 1px solid #E8E8E8;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: #FFFFFF;
+            border-radius: 12px;
+            border: 1px solid #E8E8E8;
+        }
+
+        .flow-box {
+            background: #F7F7F7;
+            border: 1px solid #E8E8E8;
+            border-radius: 8px;
+            padding: 0.6rem 0;
+            width: 160px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+            color: #3B4151;
+        }
+
+        .flow-box.flow-start {
+            background: #1B1B1B;
+            color: #85EA2D;
+            border-color: #85EA2D;
+        }
+
+        .flow-box.flow-start small {
+            color: #888;
+        }
+
+        .flow-arrow {
+            color: #CCC;
+            font-size: 1.2rem;
+            font-weight: normal;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #FAFAFA;
+            color: #3B4151;
+            padding: 0.7rem 1rem;
+            text-align: left;
+            border-bottom: 2px solid #E8E8E8;
+        }
+
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #E8E8E8;
+            color: #5B6477;
+        }
+
+        td code {
+            background: #1B1B1B;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: #85EA2D;
+        }
+
+        .toc {
+            background: #FFFFFF;
+            border: 1px solid #E8E8E8;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin: 2rem 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #3B4151;
+        }
+
+        .toc ol {
+            padding-left: 1.5rem;
+        }
+
+        .toc li {
+            margin: 0.4rem 0;
+        }
+
+        .toc a {
+            color: #49CC90;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc a:hover { text-decoration: underline; }
+
+        footer {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #888;
+            font-size: 0.85rem;
+            border-top: 1px solid #E8E8E8;
+            margin-top: 3rem;
+        }
+
+        @media print {
+            body { background: white; }
+            .cover { background: #1B1B1B; }
+            .step { border-color: #E8E8E8; }
+            pre { border-color: #333; background: #1B1B1B; }
+            .screenshot { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- CAPA -->
+<div class="cover">
+    <div class="cover-content">
+        <h1>Chat <span>Platform</span></h1>
+        <p class="subtitle">Cookbook de Autenticação e Uso da API</p>
+        <div class="divider"></div>
+        <div class="badge-group">
+            <span class="badge"><span class="dot" style="background:#4990E2"></span> Auth Service :8080</span>
+            <span class="badge"><span class="dot" style="background:#49CC90"></span> Chat Service :8081</span>
+            <span class="badge"><span class="dot" style="background:#FCA130"></span> JWT RS256</span>
+            <span class="badge"><span class="dot" style="background:#85EA2D"></span> Multi-tenant</span>
+        </div>
+        <p class="meta">Diálogo Sistemas &bull; Julho 2026 &bull; v1.0</p>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- SUMÁRIO -->
+    <div class="toc">
+        <h3>Sumário</h3>
+        <ol>
+            <li><a href="#overview">Visão Geral do Fluxo</a></li>
+            <li><a href="#step1">Passo 1 — Criar um Tenant</a></li>
+            <li><a href="#step2">Passo 2 — Provisionar Usuários</a></li>
+            <li><a href="#step3">Passo 3 — Gerar Token JWT</a></li>
+            <li><a href="#step4">Passo 4 — Autenticar no Chat Service</a></li>
+            <li><a href="#step5">Passo 5 — Criar uma Conversa</a></li>
+            <li><a href="#step6">Passo 6 — Enviar Mensagem</a></li>
+            <li><a href="#step7">Passo 7 — Consultar Inbox e Histórico</a></li>
+            <li><a href="#headers">Resumo dos Headers</a></li>
+            <li><a href="#cicd">CI/CD — Pipeline de Deploy na GCP</a>
+                <ol style="margin-top: 0.3rem;">
+                    <li><a href="#cicd-why">Por que Cloud Run + Cloud Build?</a></li>
+                    <li><a href="#cicd-project">Criar e configurar o projeto GCP</a></li>
+                    <li><a href="#cicd-dockerfile">Os Dockerfiles — decisão por decisão</a></li>
+                    <li><a href="#cicd-cloudbuild">O cloudbuild.yaml — linha por linha</a></li>
+                    <li><a href="#cicd-github">Conectar GitHub ao Cloud Build</a></li>
+                    <li><a href="#cicd-trigger">Criar o trigger de deploy</a></li>
+                    <li><a href="#cicd-secrets">Configurar secrets</a></li>
+                    <li><a href="#cicd-first-deploy">Primeiro deploy</a></li>
+                    <li><a href="#cicd-infra">Infraestrutura resultante</a></li>
+                </ol>
+            </li>
+        </ol>
+    </div>
+
+    <!-- VISÃO GERAL -->
+    <h2 id="overview">Visão Geral do Fluxo</h2>
+
+    <p>A plataforma usa dois serviços independentes. O <strong>Auth Service</strong> gerencia tenants, usuários e emite tokens JWT. O <strong>Chat Service</strong> gerencia conversas, mensagens e file upload, protegido por JWT.</p>
+
+    <div class="flow-diagram">
+        <div class="flow-box flow-start">Sistema Externo<br><small>Sua aplicação</small></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="border-color: #4990E2;">Auth Service<br><small style="color:#888">:8080</small></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="border-color: #FCA130;">Token JWT<br><small style="color:#888">RS256</small></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="border-color: #49CC90;">Chat Service<br><small style="color:#888">:8081</small></div>
+    </div>
+
+    <div class="screenshot">
+        <img src="images/01-auth-swagger-home.png" alt="Auth Service Swagger UI">
+        <div class="screenshot-caption">Auth Service — Swagger UI (localhost:8080)</div>
+    </div>
+
+    <!-- PASSO 1 -->
+    <h2 id="step1">Passo 1 — Criar um Tenant</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">1</div>
+            <div class="step-title">Autenticar com a Master Key</div>
+        </div>
+
+        <p>Acesse o Swagger do Auth Service em <code>http://localhost:8080/swagger-ui/index.html</code>. Clique em <strong>Authorize</strong> e preencha o campo <strong>masterKey</strong> com a chave master do sistema.</p>
+
+        <div class="header-info">
+            Header: <code>X-Master-Key</code> &rarr; valor definido na variável de ambiente <code>AUTH_MASTER_KEY</code>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/02-auth-authorize-modal.png" alt="Modal de autorização">
+            <div class="screenshot-caption">Modal de autorização — preenchendo a Master Key</div>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/03-auth-masterkey-authorized.png" alt="Master Key autorizada">
+            <div class="screenshot-caption">Master Key autorizada com sucesso</div>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">2</div>
+            <div class="step-title">Executar POST /api/auth/tenants</div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <span>/api/auth/tenants</span>
+            <span class="service-badge service-auth">Auth Service</span>
+        </div>
+
+        <h3>Request Body</h3>
+        <pre><code>{
+  <span class="json-key">"name"</span>: <span class="json-string">"SESI Nacional"</span>
+}</code></pre>
+
+        <div class="screenshot">
+            <img src="images/04-create-tenant-tryitout.png" alt="Criar tenant - Try it out">
+            <div class="screenshot-caption">Endpoint expandido com "Try it out" ativo</div>
+        </div>
+
+        <h3>Response (201)</h3>
+        <pre><code>{
+  <span class="json-key">"tenantId"</span>: <span class="json-string">"07a0a59c-c578-4325-bb78-d1fbd01cc655"</span>,
+  <span class="json-key">"apiKey"</span>: <span class="json-string">"iWw4AzF6XscuCvp4c0iyvBb3MicX3UlfD2jIGPVi3_U"</span>
+}</code></pre>
+
+        <div class="alert alert-warning">
+            <strong>IMPORTANTE:</strong> A <code>apiKey</code> é exibida <strong>uma única vez</strong>. Armazene-a com segurança — ela será usada em todos os próximos passos.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/05-create-tenant-response.png" alt="Resposta do criar tenant">
+            <div class="screenshot-caption">Resposta 201 — Tenant criado com sucesso</div>
+        </div>
+    </div>
+
+    <!-- PASSO 2 -->
+    <h2 id="step2">Passo 2 — Provisionar Usuários</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">3</div>
+            <div class="step-title">Autenticar com a Tenant API Key</div>
+        </div>
+
+        <p>Clique em <strong>Authorize</strong> novamente e preencha o campo <strong>tenantApiKey</strong> com a <code>apiKey</code> obtida no passo anterior.</p>
+
+        <div class="header-info">
+            Header: <code>X-API-Key</code> &rarr; a API key retornada ao criar o tenant
+        </div>
+
+        <div class="screenshot">
+            <img src="images/06-auth-tenantkey-authorized.png" alt="Tenant API Key autorizada">
+            <div class="screenshot-caption">Tenant API Key autorizada</div>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">4</div>
+            <div class="step-title">Criar Usuário 1 (Mediador)</div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <span>/api/auth/users</span>
+            <span class="service-badge service-auth">Auth Service</span>
+        </div>
+
+        <h3>Request Body</h3>
+        <pre><code>{
+  <span class="json-key">"externalId"</span>: <span class="json-string">"prof-123"</span>,
+  <span class="json-key">"name"</span>: <span class="json-string">"Mayara Amorim"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"mayara@sesi.org.br"</span>,
+  <span class="json-key">"role"</span>: <span class="json-string">"MEDIADOR"</span>
+}</code></pre>
+
+        <div class="alert alert-info">
+            Roles disponíveis: <code>MEDIADOR</code> e <code>USUARIO_COMUM</code>. Se o <code>externalId</code> já existir para o tenant, a chamada atualiza os dados (upsert).
+        </div>
+
+        <h3>Response (201)</h3>
+        <pre><code>{
+  <span class="json-key">"userId"</span>: <span class="json-string">"e0ba2dec-ae18-4e1f-bbe1-d23056051ba3"</span>,
+  <span class="json-key">"externalId"</span>: <span class="json-string">"prof-123"</span>
+}</code></pre>
+
+        <div class="screenshot">
+            <img src="images/08-provision-user1-response.png" alt="Usuário 1 criado">
+            <div class="screenshot-caption">Usuário 1 (Mediador) criado com sucesso</div>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">5</div>
+            <div class="step-title">Criar Usuário 2 (Usuário Comum)</div>
+        </div>
+
+        <h3>Request Body</h3>
+        <pre><code>{
+  <span class="json-key">"externalId"</span>: <span class="json-string">"aluno-456"</span>,
+  <span class="json-key">"name"</span>: <span class="json-string">"João Silva"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"joao@sesi.org.br"</span>,
+  <span class="json-key">"role"</span>: <span class="json-string">"USUARIO_COMUM"</span>
+}</code></pre>
+
+        <h3>Response (201)</h3>
+        <pre><code>{
+  <span class="json-key">"userId"</span>: <span class="json-string">"c3f55499-505f-456d-969b-d8a3dd0ea51a"</span>,
+  <span class="json-key">"externalId"</span>: <span class="json-string">"aluno-456"</span>
+}</code></pre>
+
+        <div class="screenshot">
+            <img src="images/09-provision-user2-response.png" alt="Usuário 2 criado">
+            <div class="screenshot-caption">Usuário 2 (Usuário Comum) criado com sucesso</div>
+        </div>
+    </div>
+
+    <!-- PASSO 3 -->
+    <h2 id="step3">Passo 3 — Gerar Token JWT</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">6</div>
+            <div class="step-title">Gerar token para o usuário</div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <span>/api/auth/token</span>
+            <span class="service-badge service-auth">Auth Service</span>
+        </div>
+
+        <p>O token é gerado a partir do <code>externalId</code> do usuário, não do <code>userId</code>.</p>
+
+        <h3>Request Body</h3>
+        <pre><code>{
+  <span class="json-key">"externalId"</span>: <span class="json-string">"prof-123"</span>
+}</code></pre>
+
+        <h3>Response (200)</h3>
+        <pre><code>{
+  <span class="json-key">"accessToken"</span>: <span class="json-string">"eyJraWQiOiJhdXRoLXNlcnZpY2Uta2V5..."</span>,
+  <span class="json-key">"expiresIn"</span>: <span class="json-number">86400</span>
+}</code></pre>
+
+        <div class="alert alert-info">
+            O token expira em <strong>24 horas</strong> (86400 segundos). Claims do JWT: <code>sub</code> (userId), <code>tenant_id</code>, <code>name</code>, <code>role</code>.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/10-generate-token-response.png" alt="Token JWT gerado">
+            <div class="screenshot-caption">Token JWT gerado com sucesso</div>
+        </div>
+    </div>
+
+    <!-- PASSO 4 -->
+    <h2 id="step4">Passo 4 — Autenticar no Chat Service</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">7</div>
+            <div class="step-title">Colar o JWT no Chat Service</div>
+        </div>
+
+        <p>Acesse o Swagger do Chat Service em <code>http://localhost:8081/swagger-ui/index.html</code>. Clique em <strong>Authorize</strong> e cole o <code>accessToken</code> no campo <strong>bearerJwt</strong>.</p>
+
+        <div class="header-info">
+            Header: <code>Authorization</code> &rarr; <code>Bearer &lt;accessToken&gt;</code>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/11-chat-swagger-home.png" alt="Chat Service Swagger UI">
+            <div class="screenshot-caption">Chat Service — Swagger UI (localhost:8081)</div>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/12-chat-jwt-authorized.png" alt="JWT autorizado no Chat Service">
+            <div class="screenshot-caption">JWT autorizado no Chat Service</div>
+        </div>
+
+        <div class="alert alert-success">
+            A partir daqui, todas as chamadas ao Chat Service usam automaticamente o token JWT no header <code>Authorization</code>.
+        </div>
+    </div>
+
+    <!-- PASSO 5 -->
+    <h2 id="step5">Passo 5 — Criar uma Conversa</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">8</div>
+            <div class="step-title">Criar conversa entre dois usuários</div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <span>/api/chat/conversations</span>
+            <span class="service-badge service-chat">Chat Service</span>
+        </div>
+
+        <h3>Request Body</h3>
+        <pre><code>{
+  <span class="json-key">"type"</span>: <span class="json-string">"INDIVIDUAL"</span>,
+  <span class="json-key">"title"</span>: <span class="json-null">null</span>,
+  <span class="json-key">"description"</span>: <span class="json-null">null</span>,
+  <span class="json-key">"participants"</span>: [
+    <span class="json-string">"e0ba2dec-ae18-4e1f-bbe1-d23056051ba3"</span>,
+    <span class="json-string">"c3f55499-505f-456d-969b-d8a3dd0ea51a"</span>
+  ]
+}</code></pre>
+
+        <div class="alert alert-info">
+            Use os <code>userId</code> retornados no Passo 2. Para conversas <code>INDIVIDUAL</code>, exatamente 2 participantes. Para <code>GROUP</code>, inclua <code>title</code> e mais participantes.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/13-create-conversation-request.png" alt="Criar conversa - request">
+            <div class="screenshot-caption">Criando conversa individual entre dois usuários</div>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/14-create-conversation-response.png" alt="Criar conversa - response 201">
+            <div class="screenshot-caption">Conversa criada (201) — o endpoint retorna sem body</div>
+        </div>
+    </div>
+
+    <!-- PASSO 6 -->
+    <h2 id="step6">Passo 6 — Enviar Mensagem</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">9</div>
+            <div class="step-title">Obter o conversationId via Inbox</div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <span>/api/chat/conversations/inbox</span>
+            <span class="service-badge service-chat">Chat Service</span>
+        </div>
+
+        <p>O endpoint de criar conversa não retorna body. Use o <strong>Inbox</strong> para obter o <code>conversationId</code>.</p>
+
+        <h3>Response (200)</h3>
+        <pre><code>[
+  {
+    <span class="json-key">"conversationId"</span>: <span class="json-string">"ed9af3ff-fe06-4b08-b24a-c719a21884e6"</span>,
+    <span class="json-key">"title"</span>: <span class="json-null">null</span>,
+    <span class="json-key">"lastMessagePreview"</span>: <span class="json-null">null</span>,
+    <span class="json-key">"lastMessageAt"</span>: <span class="json-null">null</span>,
+    <span class="json-key">"unreadCount"</span>: <span class="json-number">0</span>,
+    <span class="json-key">"readOnly"</span>: <span class="json-null">false</span>
+  }
+]</code></pre>
+
+        <div class="screenshot">
+            <img src="images/15-inbox-response.png" alt="Inbox response">
+            <div class="screenshot-caption">Inbox retornando a conversa criada com seu conversationId</div>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">10</div>
+            <div class="step-title">Enviar a primeira mensagem</div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <span>/api/chat/conversations/messages</span>
+            <span class="service-badge service-chat">Chat Service</span>
+        </div>
+
+        <h3>Request Body</h3>
+        <pre><code>{
+  <span class="json-key">"conversationId"</span>: <span class="json-string">"ed9af3ff-fe06-4b08-b24a-c719a21884e6"</span>,
+  <span class="json-key">"content"</span>: <span class="json-string">"Olá, tudo bem? Esta é a primeira mensagem!"</span>
+}</code></pre>
+
+        <h3>Response (201)</h3>
+        <p>Retorna sem body. A mensagem é distribuída via Kafka e WebSocket para os participantes.</p>
+
+        <div class="screenshot">
+            <img src="images/16-send-message-response.png" alt="Mensagem enviada">
+            <div class="screenshot-caption">Mensagem enviada com sucesso (201)</div>
+        </div>
+    </div>
+
+    <!-- PASSO 7 -->
+    <h2 id="step7">Passo 7 — Consultar Inbox e Histórico</h2>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">11</div>
+            <div class="step-title">Outros endpoints úteis</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Ação</th>
+                    <th>Endpoint</th>
+                    <th>Descrição</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ver inbox</td>
+                    <td><code>GET /api/chat/conversations/inbox</code></td>
+                    <td>Lista conversas com preview e contagem de não lidas</td>
+                </tr>
+                <tr>
+                    <td>Ver histórico</td>
+                    <td><code>GET /api/chat/conversations/{id}/messages</code></td>
+                    <td>Histórico com paginação por cursor</td>
+                </tr>
+                <tr>
+                    <td>Marcar como lida</td>
+                    <td><code>PATCH /api/chat/conversations/{id}/read</code></td>
+                    <td>Marca todas as mensagens como lidas</td>
+                </tr>
+                <tr>
+                    <td>Editar mensagem</td>
+                    <td><code>PATCH /api/chat/conversations/{id}/messages/{msgId}</code></td>
+                    <td>Apenas o autor pode editar</td>
+                </tr>
+                <tr>
+                    <td>Excluir mensagem</td>
+                    <td><code>DELETE /api/chat/conversations/{id}/messages/{msgId}</code></td>
+                    <td>Soft-delete; admins podem excluir qualquer mensagem</td>
+                </tr>
+                <tr>
+                    <td>Upload de arquivo</td>
+                    <td><code>POST /api/conversations/{id}/upload/request</code></td>
+                    <td>Solicita signed URL para upload direto ao GCS</td>
+                </tr>
+                <tr>
+                    <td>Confirmar upload</td>
+                    <td><code>POST /api/conversations/{id}/upload/confirm</code></td>
+                    <td>Cria mensagem com attachment após upload ao GCS</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- RESUMO HEADERS -->
+    <h2 id="headers">Resumo dos Headers</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Serviço</th>
+                <th>Operação</th>
+                <th>Header</th>
+                <th>Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="service-badge service-auth">Auth</span></td>
+                <td>Criar tenant</td>
+                <td><code>X-Master-Key</code></td>
+                <td>Master key do sistema</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-auth">Auth</span></td>
+                <td>Criar usuários</td>
+                <td><code>X-API-Key</code></td>
+                <td>API key do tenant</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-auth">Auth</span></td>
+                <td>Gerar token</td>
+                <td><code>X-API-Key</code></td>
+                <td>API key do tenant</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-chat">Chat</span></td>
+                <td>Todos os endpoints</td>
+                <td><code>Authorization</code></td>
+                <td><code>Bearer &lt;accessToken&gt;</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- CI/CD PIPELINE -->
+    <h2 id="cicd">CI/CD — Pipeline de Deploy na GCP</h2>
+
+    <p>Este capítulo documenta <strong>toda a jornada</strong> de criação da pipeline de deploy — desde a escolha da arquitetura, passando pela criação dos Dockerfiles e do <code>cloudbuild.yaml</code>, até a configuração dos triggers e o primeiro deploy funcionando. Cada decisão é explicada.</p>
+
+    <div class="flow-diagram">
+        <div class="flow-box flow-start">git push<br><small>branch develop</small></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="border-color: #4990E2;">Cloud Build<br><small style="color:#888">CI/CD</small></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="border-color: #FCA130;">Artifact Registry<br><small style="color:#888">Docker images</small></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="border-color: #49CC90;">Cloud Run<br><small style="color:#888">serverless</small></div>
+    </div>
+
+    <!-- 9.1 POR QUE -->
+    <h3 id="cicd-why">9.1 — Por que Cloud Run + Cloud Build?</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">&bull;</div>
+            <div class="step-title">A decisão arquitetural</div>
+        </div>
+
+        <p>Para um projeto com dois microserviços Spring Boot, precisávamos de uma plataforma que:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Requisito</th>
+                    <th>Alternativas descartadas</th>
+                    <th>Cloud Run resolve</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Custo zero quando sem tráfego</td>
+                    <td>GKE (cluster sempre ligado), Compute Engine (VM fixa)</td>
+                    <td>Escala a zero — paga só quando recebe requisição</td>
+                </tr>
+                <tr>
+                    <td>Deploy simples (sem Kubernetes)</td>
+                    <td>GKE (manifests YAML, Helm charts)</td>
+                    <td>Uma imagem Docker = um deploy, sem orquestração</td>
+                </tr>
+                <tr>
+                    <td>HTTPS automático</td>
+                    <td>Compute Engine (config manual de cert)</td>
+                    <td>TLS grátis em toda URL <code>*.run.app</code></td>
+                </tr>
+                <tr>
+                    <td>CI/CD nativo no GCP</td>
+                    <td>GitHub Actions (funciona, mas fora do ecossistema GCP)</td>
+                    <td>Cloud Build integrado, trigger direto no push</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <strong>Resumo:</strong> Cloud Run é serverless para containers — você entrega um Docker image e ele cuida do resto (scaling, TLS, health checks). Cloud Build é o CI/CD nativo do GCP que compila, builda e deploya a cada push.
+        </div>
+    </div>
+
+    <!-- 9.2 PROJETO GCP -->
+    <h3 id="cicd-project">9.2 — Criar e configurar o projeto GCP</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">1</div>
+            <div class="step-title">Criar o projeto</div>
+        </div>
+
+        <p>Se ainda não tem um projeto GCP, crie um. O projeto é o "container" de tudo no GCP — billing, APIs, serviços, permissões.</p>
+
+        <pre><code><span class="json-key"># Criar o projeto (o ID precisa ser único globalmente)</span>
+gcloud projects create chat-enterprise-dev --name="Chat Enterprise DEV"
+
+<span class="json-key"># Vincular billing (obrigatório para usar qualquer API paga)</span>
+<span class="json-key"># Faça pelo console: https://console.cloud.google.com/billing</span></code></pre>
+
+        <div class="alert alert-warning">
+            <strong>Billing obrigatório:</strong> Sem billing vinculado, nenhuma API pode ser habilitada. O GCP tem free tier generoso — Cloud Run, Cloud Build e Artifact Registry têm cotas gratuitas suficientes para desenvolvimento.
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">2</div>
+            <div class="step-title">Configurar o gcloud CLI</div>
+        </div>
+
+        <p>O <code>gcloud</code> suporta múltiplas configurações (profiles). Útil quando você tem projetos do trabalho e pessoais na mesma máquina.</p>
+
+        <pre><code><span class="json-key"># Criar uma configuração nomeada para este projeto</span>
+gcloud config configurations create config-chat-enterprise
+
+<span class="json-key"># Setar conta e projeto</span>
+gcloud config set account moreiraamorim.business@gmail.com
+gcloud config set project chat-enterprise-dev
+
+<span class="json-key"># Trocar entre configurações</span>
+gcloud config configurations activate config-chat-enterprise
+
+<span class="json-key"># Ver todas as configurações</span>
+gcloud config configurations list</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Por que configurações nomeadas?</strong> Evita deployar no projeto errado. Cada <code>gcloud config</code> guarda conta, projeto e região separadamente. Use <code>activate</code> para trocar.
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">3</div>
+            <div class="step-title">Habilitar APIs necessárias</div>
+        </div>
+
+        <p>Cada serviço do GCP precisa ser habilitado explicitamente. São 4 APIs:</p>
+
+        <pre><code>gcloud services enable \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  run.googleapis.com \
+  secretmanager.googleapis.com \
+  --project=chat-enterprise-dev</code></pre>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>API</th>
+                    <th>Para quê</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>cloudbuild</code></td>
+                    <td>CI/CD — compila e deploya a cada push</td>
+                </tr>
+                <tr>
+                    <td><code>artifactregistry</code></td>
+                    <td>Registry privado de imagens Docker</td>
+                </tr>
+                <tr>
+                    <td><code>run</code></td>
+                    <td>Hospedagem serverless dos containers</td>
+                </tr>
+                <tr>
+                    <td><code>secretmanager</code></td>
+                    <td>Armazena secrets (senhas, chaves RSA, configs do Kafka). Também usado internamente pelo Cloud Build para guardar o token OAuth do GitHub</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">4</div>
+            <div class="step-title">Criar o Artifact Registry</div>
+        </div>
+
+        <p>O Artifact Registry é onde as imagens Docker ficam armazenadas. Precisa ser criado antes do primeiro build.</p>
+
+        <pre><code>gcloud artifacts repositories create chat-platform \
+  --repository-format=docker \
+  --location=us-central1 \
+  --description="Imagens Docker do Chat Platform"</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Por que <code>us-central1</code>?</strong> Mesma região do Cloud Run — o pull da imagem é mais rápido e sem custo de egress entre regiões.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/23-artifact-registry.png" alt="Artifact Registry">
+            <div class="screenshot-caption">Artifact Registry — Repositório <code>chat-platform</code> criado</div>
+        </div>
+    </div>
+
+    <!-- 9.3 DOCKERFILES -->
+    <h3 id="cicd-dockerfile">9.3 — Os Dockerfiles — decisão por decisão</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">5</div>
+            <div class="step-title">Estrutura multi-stage</div>
+        </div>
+
+        <p>Cada serviço tem seu <code>Dockerfile</code>. Ambos usam <strong>multi-stage build</strong> — um estágio compila, outro roda. Isso reduz o tamanho da imagem final de ~800MB para ~200MB.</p>
+
+        <pre><code><span class="json-key"># ============================================</span>
+<span class="json-key"># Stage 1: Build com Maven</span>
+<span class="json-key"># ============================================</span>
+FROM maven:3.9-eclipse-temurin-25 AS build
+
+WORKDIR /app
+
+<span class="json-key"># Copiar TODOS os POMs (Maven precisa resolver o reactor completo)</span>
+COPY pom.xml .
+COPY shared-kernel/pom.xml shared-kernel/
+COPY auth-service/pom.xml auth-service/
+COPY chat-service/pom.xml chat-service/
+
+<span class="json-key"># Baixar dependências (cached se POMs não mudarem)</span>
+RUN mvn dependency:go-offline -pl auth-service -am -B
+
+<span class="json-key"># Copiar código-fonte</span>
+COPY shared-kernel/src shared-kernel/src
+COPY auth-service/src auth-service/src
+
+<span class="json-key"># Compilar (sem testes — já rodaram localmente)</span>
+RUN mvn package -pl auth-service -am -DskipTests -B
+
+<span class="json-key"># ============================================</span>
+<span class="json-key"># Stage 2: Runtime mínimo</span>
+<span class="json-key"># ============================================</span>
+FROM eclipse-temurin:25-jre-alpine
+
+WORKDIR /app
+COPY --from=build /app/auth-service/target/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "--enable-preview", "-jar", "app.jar"]</code></pre>
+
+        <p>O Dockerfile do <code>chat-service</code> é idêntico, trocando <code>auth-service</code> por <code>chat-service</code>.</p>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">6</div>
+            <div class="step-title">Decisões explicadas</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Linha</th>
+                    <th>Decisão</th>
+                    <th>Por quê</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>maven:3.9-eclipse-temurin-25</code></td>
+                    <td>Imagem base do build</td>
+                    <td>Java 25 com Maven — mesma versão do projeto</td>
+                </tr>
+                <tr>
+                    <td>Copiar POMs primeiro</td>
+                    <td>Cache de dependências do Docker</td>
+                    <td>Se os POMs não mudaram, o Docker reutiliza o cache do <code>dependency:go-offline</code>. Economiza minutos em builds subsequentes</td>
+                </tr>
+                <tr>
+                    <td><code>-pl auth-service -am</code></td>
+                    <td>Build seletivo</td>
+                    <td><code>-pl</code> = only this module, <code>-am</code> = also make dependencies (shared-kernel). Não compila o outro serviço</td>
+                </tr>
+                <tr>
+                    <td><code>eclipse-temurin:25-jre-alpine</code></td>
+                    <td>Imagem runtime mínima</td>
+                    <td>Só JRE (sem JDK), Alpine Linux (~200MB vs ~800MB). Menos superfície de ataque, deploy mais rápido</td>
+                </tr>
+                <tr>
+                    <td><code>--enable-preview</code></td>
+                    <td>Flag da JVM</td>
+                    <td>Obrigatória — o projeto usa preview features do Java 25. Sem ela, o app não inicia</td>
+                </tr>
+                <tr>
+                    <td><code>EXPOSE 8080</code></td>
+                    <td>Porta do container</td>
+                    <td>Cloud Run injeta a variável <code>PORT</code> e espera que o app escute nela. O Spring Boot lê via <code>server.port=${PORT:8080}</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 9.4 CLOUDBUILD.YAML -->
+    <h3 id="cicd-cloudbuild">9.4 — O cloudbuild.yaml — linha por linha</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">7</div>
+            <div class="step-title">Visão geral do pipeline</div>
+        </div>
+
+        <p>O <code>cloudbuild.yaml</code> fica na raiz do repositório e define <strong>8 etapas sequenciais</strong>. Quando o Cloud Build detecta um push na <code>develop</code>, ele clona o repo e executa cada step em ordem.</p>
+
+        <div class="flow-diagram">
+            <div class="flow-box" style="border-color: #4990E2;">1. Maven<br><small style="color:#888">package</small></div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box" style="border-color: #4990E2;">2–3. Docker<br><small style="color:#888">build</small></div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box" style="border-color: #FCA130;">4–5. Docker<br><small style="color:#888">push</small></div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box" style="border-color: #49CC90;">6–8. Cloud Run<br><small style="color:#888">deploy</small></div>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">8</div>
+            <div class="step-title">Step 1 — Compilar com Maven</div>
+        </div>
+
+        <pre><code>- name: 'maven:3.9-eclipse-temurin-25'
+  entrypoint: 'mvn'
+  args: ['package', '-DskipTests', '-B']</code></pre>
+
+        <table>
+            <thead>
+                <tr><th>Parâmetro</th><th>Explicação</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>name</code></td>
+                    <td>Imagem Docker que executa o step. Aqui, Maven com Java 25</td>
+                </tr>
+                <tr>
+                    <td><code>package</code></td>
+                    <td>Compila e gera os <code>.jar</code> de todos os módulos</td>
+                </tr>
+                <tr>
+                    <td><code>-DskipTests</code></td>
+                    <td>Pula testes — rodam localmente antes do push. No CI, queremos velocidade</td>
+                </tr>
+                <tr>
+                    <td><code>-B</code></td>
+                    <td>Batch mode — sem output interativo (logs mais limpos)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <strong>Por que <code>package</code> e não <code>install</code>?</strong> O <code>install</code> copia o jar para o <code>~/.m2</code> local — inútil num container efêmero. O <code>package</code> gera o jar no <code>target/</code>, que é tudo que precisamos.
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">9</div>
+            <div class="step-title">Steps 2–3 — Build das imagens Docker</div>
+        </div>
+
+        <pre><code>- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'build'
+    - '-f'
+    - 'auth-service/Dockerfile'
+    - '-t'
+    - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/auth-service:${SHORT_SHA}'
+    - '-t'
+    - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/auth-service:latest'
+    - '.'</code></pre>
+
+        <table>
+            <thead>
+                <tr><th>Elemento</th><th>Explicação</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>-f auth-service/Dockerfile</code></td>
+                    <td>Cada serviço tem seu Dockerfile. O contexto (<code>.</code>) é a raiz do monorepo, para que o <code>COPY pom.xml</code> funcione</td>
+                </tr>
+                <tr>
+                    <td><code>:${SHORT_SHA}</code></td>
+                    <td>Tag com os 7 primeiros caracteres do commit SHA. Permite rastrear qual commit gerou qual imagem</td>
+                </tr>
+                <tr>
+                    <td><code>:latest</code></td>
+                    <td>Tag conveniente para referência rápida. Sempre aponta para o build mais recente</td>
+                </tr>
+                <tr>
+                    <td><code>${PROJECT_ID}</code></td>
+                    <td>Variável built-in do Cloud Build — resolve para <code>chat-enterprise-dev</code></td>
+                </tr>
+                <tr>
+                    <td><code>${_REGION}</code>, <code>${_REPO}</code></td>
+                    <td>Substituições customizadas definidas no final do arquivo. Permite reutilizar o yaml para outros ambientes</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">10</div>
+            <div class="step-title">Steps 4–5 — Push para o Artifact Registry</div>
+        </div>
+
+        <pre><code>- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/auth-service']</code></pre>
+
+        <p><code>--all-tags</code> publica tanto a tag <code>:SHORT_SHA</code> quanto a <code>:latest</code> de uma vez.</p>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">11</div>
+            <div class="step-title">Steps 6–8 — Deploy no Cloud Run</div>
+        </div>
+
+        <p>Aqui está a parte mais importante e mais sutil do pipeline. O deploy acontece em 3 steps porque <strong>o chat-service depende da URL do auth-service</strong>.</p>
+
+        <pre><code><span class="json-key"># Step 6: Deploy auth-service (PRIMEIRO)</span>
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+    - 'run'
+    - 'deploy'
+    - 'auth-service'
+    - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/auth-service:${SHORT_SHA}'
+    - '--region=${_REGION}'
+    - '--platform=managed'
+    - '--port=8080'
+    - '--memory=512Mi'
+    - '--cpu=1'
+    - '--min-instances=0'
+    - '--max-instances=2'
+    - '--set-env-vars=SPRING_PROFILES_ACTIVE=prod'
+    - '--set-secrets=SPRING_DATASOURCE_URL=auth-datasource-url:latest,...'
+
+<span class="json-key"># Step 7: Capturar URL do auth-service</span>
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      AUTH_URL=$(gcloud run services describe auth-service \
+        --region=${_REGION} --format='value(status.url)')
+      echo "AUTH_URL=$${AUTH_URL}" > /workspace/auth-url.env
+
+<span class="json-key"># Step 8: Deploy chat-service (usa a URL do auth)</span>
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      source /workspace/auth-url.env
+      gcloud run deploy chat-service \
+        --set-env-vars="JWT_JWKS_URI=$${AUTH_URL}/.well-known/jwks.json" \
+        ...</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Por que auth deploya primeiro?</strong> O chat-service valida JWTs usando o endpoint JWKS do auth-service (<code>/.well-known/jwks.json</code>). A URL do Cloud Run é dinâmica (<code>https://auth-service-xxxxx-uc.a.run.app</code>), então o Step 7 a captura e o Step 8 injeta como variável de ambiente no chat-service.
+        </div>
+
+        <div class="alert alert-warning">
+            <strong>Detalhe do <code>$$</code>:</strong> No <code>cloudbuild.yaml</code>, <code>$$</code> é um escape para <code>$</code> literal. Sem isso, o Cloud Build tenta interpretar <code>$AUTH_URL</code> como uma substituição (e falha, porque não é uma variável built-in).
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">12</div>
+            <div class="step-title">Substituições e opções finais</div>
+        </div>
+
+        <pre><code><span class="json-key"># Substituições customizáveis (podem ser override no trigger)</span>
+substitutions:
+  _REGION: 'us-central1'
+  _REPO: 'chat-platform'
+
+<span class="json-key"># Imagens publicadas (para referência do Cloud Build)</span>
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/auth-service:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/chat-service:${SHORT_SHA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY</code></pre>
+
+        <table>
+            <thead>
+                <tr><th>Campo</th><th>Explicação</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>substitutions</code></td>
+                    <td>Variáveis com prefixo <code>_</code> que podem ser sobrescritas no trigger. Para prod, basta mudar <code>_REPO</code> para outro registry</td>
+                </tr>
+                <tr>
+                    <td><code>images</code></td>
+                    <td>Declara quais imagens o build produziu — aparece no console do Cloud Build para rastreabilidade</td>
+                </tr>
+                <tr>
+                    <td><code>CLOUD_LOGGING_ONLY</code></td>
+                    <td>Logs vão para o Cloud Logging (sem armazenar no bucket do Cloud Build — economia)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 9.5 GITHUB -->
+    <h3 id="cicd-github">9.5 — Conectar GitHub ao Cloud Build</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">13</div>
+            <div class="step-title">Criar conexão GitHub (2ª geração)</div>
+        </div>
+
+        <p>O Cloud Build precisa de acesso ao repositório GitHub para detectar pushes e clonar o código. A <strong>2ª geração</strong> usa o GitHub App do Cloud Build — mais segura que a 1ª geração (que usava OAuth pessoal com escopo amplo).</p>
+
+        <pre><code><span class="json-key"># Dar permissão ao Cloud Build para criar secrets (pré-requisito)</span>
+gcloud projects add-iam-policy-binding chat-enterprise-dev \
+  --member="serviceAccount:service-NNNNN@gcp-sa-cloudbuild.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.admin"
+
+<span class="json-key"># Criar a conexão (abre um link no terminal para autorizar no GitHub)</span>
+gcloud builds connections create github github-connection \
+  --region=us-central1
+
+<span class="json-key"># Após autorizar, linkar o repositório específico</span>
+gcloud builds repositories create chat-enterprise \
+  --connection=github-connection \
+  --region=us-central1 \
+  --remote-uri=https://github.com/Mayara-Amorim/chat-enterprise.git</code></pre>
+
+        <div class="alert alert-info">
+            <strong>O que acontece internamente:</strong> O Cloud Build cria um GitHub App, armazena o token OAuth no Secret Manager, e registra um webhook no GitHub. A cada push, o GitHub notifica o Cloud Build via esse webhook.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/24-cloudbuild-repositories.png" alt="Repositórios conectados no Cloud Build">
+            <div class="screenshot-caption">Cloud Build — Repositório GitHub conectado via 2ª geração</div>
+        </div>
+    </div>
+
+    <!-- 9.6 TRIGGER -->
+    <h3 id="cicd-trigger">9.6 — Criar o trigger de deploy</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">14</div>
+            <div class="step-title">Configurar trigger pelo Console</div>
+        </div>
+
+        <p>O trigger é o que liga "push no GitHub" a "executar o cloudbuild.yaml". Crie pelo console em <strong>Cloud Build &rarr; Gatilhos &rarr; Criar gatilho</strong>:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Valor</th>
+                    <th>Por quê</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Nome</td>
+                    <td><code>deploy-develop</code></td>
+                    <td>Nome descritivo — sabe o que faz e em qual branch</td>
+                </tr>
+                <tr>
+                    <td>Região</td>
+                    <td><code>us-central1</code></td>
+                    <td>Mesma região do Artifact Registry e Cloud Run</td>
+                </tr>
+                <tr>
+                    <td>Evento</td>
+                    <td>Enviar para uma ramificação (push)</td>
+                    <td>Dispara a cada push/merge na branch — <strong>não confundir com "tag"</strong></td>
+                </tr>
+                <tr>
+                    <td>Repositório</td>
+                    <td>2ª geração &rarr; <code>github-connection</code> &rarr; <code>chat-enterprise</code></td>
+                    <td>A conexão criada no passo anterior</td>
+                </tr>
+                <tr>
+                    <td>Branch</td>
+                    <td><code>^develop$</code></td>
+                    <td>Regex exata — só a branch <code>develop</code>, não <code>develop-fix</code> nem <code>my-develop</code></td>
+                </tr>
+                <tr>
+                    <td>Configuração</td>
+                    <td>Cloud Build config file &rarr; <code>cloudbuild.yaml</code></td>
+                    <td>Aponta para o arquivo na raiz do repositório</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <strong>Armadilha comum:</strong> Se selecionar "Enviar nova tag por push" em vez de "Enviar para uma ramificação", o trigger nunca dispara em pushes normais. Verifique que está em <strong>branch</strong>, não tag.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/20-cloudbuild-triggers.png" alt="Trigger deploy-develop">
+            <div class="screenshot-caption">Cloud Build — Trigger <code>deploy-develop</code> configurado</div>
+        </div>
+    </div>
+
+    <!-- 9.7 SECRETS -->
+    <h3 id="cicd-secrets">9.7 — Configurar secrets</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">15</div>
+            <div class="step-title">Criar secrets no Secret Manager</div>
+        </div>
+
+        <p>Os serviços recebem configurações sensíveis via <code>--set-secrets</code> no deploy. Cada secret precisa existir no Secret Manager <strong>antes do primeiro deploy</strong>.</p>
+
+        <pre><code><span class="json-key"># Exemplo: criar um secret</span>
+echo -n "jdbc:postgresql://host/auth_db?sslmode=require" | \
+  gcloud secrets create auth-datasource-url --data-file=-
+
+<span class="json-key"># Dar permissão ao Cloud Run para ler os secrets</span>
+gcloud projects add-iam-policy-binding chat-enterprise-dev \
+  --member="serviceAccount:NNNNN-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"</code></pre>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Serviço</th>
+                    <th>Secret</th>
+                    <th>Conteúdo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="service-badge service-auth">Auth</span></td>
+                    <td><code>auth-datasource-url</code></td>
+                    <td>JDBC URL do PostgreSQL (Neon DB)</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-auth">Auth</span></td>
+                    <td><code>auth-datasource-username</code></td>
+                    <td>Usuário do banco</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-auth">Auth</span></td>
+                    <td><code>auth-datasource-password</code></td>
+                    <td>Senha do banco</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-auth">Auth</span></td>
+                    <td><code>auth-master-key</code></td>
+                    <td>Master key para criar tenants</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-auth">Auth</span></td>
+                    <td><code>rsa-private-key-base64</code></td>
+                    <td>Chave RSA privada em Base64 (assina JWTs)</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-chat">Chat</span></td>
+                    <td><code>chat-datasource-url</code></td>
+                    <td>JDBC URL do PostgreSQL (Neon DB)</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-chat">Chat</span></td>
+                    <td><code>chat-datasource-username</code></td>
+                    <td>Usuário do banco</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-chat">Chat</span></td>
+                    <td><code>chat-datasource-password</code></td>
+                    <td>Senha do banco</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-chat">Chat</span></td>
+                    <td><code>kafka-bootstrap-servers</code></td>
+                    <td>Endereço do Confluent Cloud</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-chat">Chat</span></td>
+                    <td><code>kafka-sasl-jaas-config</code></td>
+                    <td>Credenciais SASL do Kafka</td>
+                </tr>
+                <tr>
+                    <td><span class="service-badge service-chat">Chat</span></td>
+                    <td><code>redis-url</code></td>
+                    <td>URL do Upstash Redis</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <strong>Por que Secret Manager e não variáveis de ambiente diretas?</strong> Segurança — secrets ficam criptografados, versionados, com controle de acesso (IAM), e auditoria de quem acessou. Variáveis de ambiente aparecem em logs e dumps de processo.
+        </div>
+    </div>
+
+    <!-- 9.8 PRIMEIRO DEPLOY -->
+    <h3 id="cicd-first-deploy">9.8 — Primeiro deploy</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">16</div>
+            <div class="step-title">Testar o trigger</div>
+        </div>
+
+        <p>Com tudo configurado, faça um push na branch <code>develop</code> para disparar o pipeline:</p>
+
+        <pre><code><span class="json-key"># Push vazio para testar (sem alterar código)</span>
+git commit --allow-empty -m "test: trigger deploy"
+git push origin develop</code></pre>
+
+        <p>Acompanhe o build no console:</p>
+
+        <pre><code><span class="json-key"># Ver builds recentes</span>
+gcloud builds list --region=us-central1 --limit=3
+
+<span class="json-key"># Ver log de um build específico</span>
+gcloud builds log BUILD_ID --region=us-central1</code></pre>
+
+        <div class="alert alert-success">
+            <strong>Se o build falhar:</strong> Leia o log no console do Cloud Build — ele mostra exatamente qual step falhou. Erros comuns: secret não encontrado, permissão da service account, Dockerfile com path errado.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/21-cloudbuild-history.png" alt="Histórico de builds">
+            <div class="screenshot-caption">Cloud Build — Histórico de builds (verde = sucesso)</div>
+        </div>
+    </div>
+
+    <!-- 9.9 INFRA RESULTANTE -->
+    <h3 id="cicd-infra">9.9 — Infraestrutura resultante</h3>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-number">17</div>
+            <div class="step-title">O que existe após o primeiro deploy</div>
+        </div>
+
+        <p>Após o pipeline rodar com sucesso, você tem:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Recurso</th>
+                    <th>O que é</th>
+                    <th>Configuração</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>auth-service</strong> (Cloud Run)</td>
+                    <td>Serviço de autenticação</td>
+                    <td>512Mi, 1 CPU, 0–2 instâncias</td>
+                </tr>
+                <tr>
+                    <td><strong>chat-service</strong> (Cloud Run)</td>
+                    <td>Serviço de chat</td>
+                    <td>512Mi, 1 CPU, 0–2 instâncias</td>
+                </tr>
+                <tr>
+                    <td><strong>chat-platform</strong> (Artifact Registry)</td>
+                    <td>Registry com imagens Docker</td>
+                    <td>Tags: <code>latest</code> + SHA por build</td>
+                </tr>
+                <tr>
+                    <td><strong>deploy-develop</strong> (Cloud Build trigger)</td>
+                    <td>Trigger automático</td>
+                    <td>Push na <code>develop</code> → build + deploy</td>
+                </tr>
+                <tr>
+                    <td><strong>11 secrets</strong> (Secret Manager)</td>
+                    <td>Configs sensíveis</td>
+                    <td>Injetados como env vars no Cloud Run</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Config do Cloud Run</th>
+                    <th>Valor</th>
+                    <th>Por quê</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Memória</td>
+                    <td><code>512Mi</code></td>
+                    <td>Suficiente para Spring Boot com JVM otimizada</td>
+                </tr>
+                <tr>
+                    <td>CPU</td>
+                    <td><code>1</code></td>
+                    <td>Ambiente dev — escala vertical se necessário</td>
+                </tr>
+                <tr>
+                    <td>Min instances</td>
+                    <td><code>0</code></td>
+                    <td>Escala a zero quando sem tráfego (custo zero em idle)</td>
+                </tr>
+                <tr>
+                    <td>Max instances</td>
+                    <td><code>2</code></td>
+                    <td>Limite de custo para ambiente dev</td>
+                </tr>
+                <tr>
+                    <td>Porta</td>
+                    <td><code>8080</code></td>
+                    <td>Padrão do Cloud Run — Spring Boot lê via <code>${PORT:8080}</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="screenshot">
+            <img src="images/22-cloudrun-services.png" alt="Serviços no Cloud Run">
+            <div class="screenshot-caption">Cloud Run — Serviços auth-service e chat-service deployados</div>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/23-artifact-registry.png" alt="Imagens no Artifact Registry">
+            <div class="screenshot-caption">Artifact Registry — Imagens Docker versionadas por commit SHA</div>
+        </div>
+
+        <div class="alert alert-success">
+            <strong>Pronto!</strong> A partir de agora, todo <code>git push origin develop</code> dispara automaticamente: compilação → build Docker → push das imagens → deploy no Cloud Run. Zero intervenção manual.
+        </div>
+    </div>
+
+    <footer>
+        <p>Chat Platform Cookbook &bull; Diálogo Sistemas &bull; 2026</p>
+        <p style="margin-top: 0.5rem;">Gerado automaticamente a partir do Swagger UI com screenshots reais da API em execução.</p>
+    </footer>
+
+</div>
+
+</body>
+</html>
