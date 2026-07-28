@@ -66,6 +66,19 @@ public class MessageRepositoryGateway implements MessageGateway {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Message> findMessagesAfterCursor(ConversationId conversationId, Instant cursorDate, UUID cursorId, int limit) {
+        return messageRepository.findMessagesAfterCursor(
+                        conversationId.value(),
+                        cursorDate,
+                        cursorId,
+                        PageRequest.of(0, limit)
+                ).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Message> findUnreadByParticipant(ConversationId conversationId, UserId userId) {
         return messageRepository.findUnreadByParticipant(
                 conversationId.value(),

@@ -95,20 +95,26 @@ public class ChatController {
 
     @GetMapping("/{conversationId}/messages")
     @Operation(
-            summary = "Obter historico",
-            description = "Retorna o historico de mensagens de uma conversa com paginacao por cursor."
+            summary = "Obter historico ou sincronizar mensagens novas",
+            description = "Por padrao retorna o historico (mensagens mais antigas primeiro) paginado por cursor via `cursor`. " +
+                    "Para sincronizar apos reconectar, envie `after` com o cursor da ultima mensagem ja recebida: " +
+                    "retorna apenas as mensagens que chegaram DEPOIS dele (ordem crescente). " +
+                    "Use `cursor` OU `after`, nunca os dois."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Historico retornado")
+            @ApiResponse(responseCode = "200", description = "Mensagens retornadas")
     })
     public ResponseEntity<ChatHistoryResponseDTO> getChatHistory(
             @PathVariable UUID conversationId,
-            @Parameter(description = "Cursor para paginacao (formato: timestamp_uuid)") @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor para paginacao do historico, para tras (formato: timestamp_uuid)") @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor da ultima mensagem recebida; retorna as mais novas que ele (sync ao reconectar)") @RequestParam(required = false) String after,
             @Parameter(description = "Numero maximo de mensagens") @RequestParam(defaultValue = "20") int limit,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
 
         UUID loggedUserId = UUID.fromString(jwt.getSubject());
-        ChatHistoryResponseDTO history = getChatHistoryUseCase.execute(conversationId, loggedUserId, cursor, limit);
+        ChatHistoryResponseDTO history = (after != null)
+                ? getChatHistoryUseCase.executeSince(conversationId, loggedUserId, after, limit)
+                : getChatHistoryUseCase.execute(conversationId, loggedUserId, cursor, limit);
         return ResponseEntity.ok(history);
     }
 

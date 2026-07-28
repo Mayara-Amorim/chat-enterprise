@@ -5,6 +5,7 @@ import br.com.dialogosistemas.chat_service.application.DTO.MessageDTO;
 import br.com.dialogosistemas.shared_kernel.domain.exception.ResourceNotFoundException;
 import br.com.dialogosistemas.chat_service.domain.gateway.ConversationGateway;
 import br.com.dialogosistemas.chat_service.domain.gateway.MessageGateway;
+import br.com.dialogosistemas.chat_service.domain.model.message.Message;
 import br.com.dialogosistemas.chat_service.domain.valueObject.ConversationId;
 import br.com.dialogosistemas.chat_service.infra.util.CursorUtils;
 import br.com.dialogosistemas.shared_kernel.domain.valueObject.UserId;
@@ -28,6 +29,26 @@ public class GetChatHistoryUseCase {
 
     @Transactional(readOnly = true)
     public ChatHistoryResponseDTO execute(UUID conversationId, UUID requesterId, String cursor, int limit) {
+        ConversationId convId = requireParticipant(conversationId, requesterId);
+        CursorUtils.DecodedCursor decodedCursor = CursorUtils.decode(cursor);
+        Instant cursorDate = decodedCursor != null ? decodedCursor.createdAt() : null;
+        UUID cursorId = decodedCursor != null ? decodedCursor.id() : null;
+
+        return toResponse(messageGateway.findHistoryBeforeCursor(convId, cursorDate, cursorId, limit));
+    }
+
+    // Sync ao reconectar: carrega as mensagens que chegaram DEPOIS do cursor (ordem crescente).
+    @Transactional(readOnly = true)
+    public ChatHistoryResponseDTO executeSince(UUID conversationId, UUID requesterId, String afterCursor, int limit) {
+        ConversationId convId = requireParticipant(conversationId, requesterId);
+        CursorUtils.DecodedCursor decodedCursor = CursorUtils.decode(afterCursor);
+        Instant cursorDate = decodedCursor != null ? decodedCursor.createdAt() : null;
+        UUID cursorId = decodedCursor != null ? decodedCursor.id() : null;
+
+        return toResponse(messageGateway.findMessagesAfterCursor(convId, cursorDate, cursorId, limit));
+    }
+
+    private ConversationId requireParticipant(UUID conversationId, UUID requesterId) {
         ConversationId convId = new ConversationId(conversationId);
         UserId requester = new UserId(requesterId);
 
@@ -40,12 +61,11 @@ public class GetChatHistoryUseCase {
         if (!isParticipant) {
             throw new IllegalArgumentException("Acesso negado: o utilizador não é participante desta conversa.");
         }
+        return convId;
+    }
 
-        CursorUtils.DecodedCursor decodedCursor = CursorUtils.decode(cursor);
-        Instant cursorDate = decodedCursor != null ? decodedCursor.createdAt() : null;
-        UUID cursorId = decodedCursor != null ? decodedCursor.id() : null;
-
-        List<MessageDTO> messages = messageGateway.findHistoryBeforeCursor(convId, cursorDate, cursorId, limit).stream()
+    private ChatHistoryResponseDTO toResponse(List<Message> domainMessages) {
+        List<MessageDTO> messages = domainMessages.stream()
                 .map(message -> new MessageDTO(
                         message.getId().value(),
                         message.getContent(),

@@ -61,6 +61,67 @@ class GetChatHistoryUseCaseTest {
     }
 
     @Test
+    void executeSinceUsesForwardQueryAndReturnsMessagesWithNextCursor() {
+        UUID conversationUuid = UUID.randomUUID();
+        UUID requesterUuid = UUID.randomUUID();
+        Instant afterCreatedAt = Instant.parse("2026-03-31T10:00:00Z");
+        UUID afterMessageId = UUID.fromString("00000000-0000-0000-0000-000000000005");
+        String afterCursor = CursorUtils.encode(afterCreatedAt, afterMessageId);
+        Instant olderNewAt = Instant.parse("2026-03-31T11:00:00Z");
+        Instant newestAt = Instant.parse("2026-03-31T12:00:00Z");
+        UUID newestId = UUID.fromString("00000000-0000-0000-0000-000000000020");
+
+        StubConversationGateway conversationGateway = new StubConversationGateway(
+                conversationWithParticipant(conversationUuid, requesterUuid)
+        );
+        CapturingMessageGateway messageGateway = new CapturingMessageGateway(List.of(
+                message("Nova mais antiga", UUID.randomUUID(), olderNewAt),
+                message("Nova mais recente", requesterUuid, newestAt, newestId)
+        ));
+
+        GetChatHistoryUseCase useCase = new GetChatHistoryUseCase(conversationGateway, messageGateway);
+
+        var response = useCase.executeSince(conversationUuid, requesterUuid, afterCursor, 20);
+
+        assertEquals(true, messageGateway.forwardQueryCalled);
+        assertEquals(afterCreatedAt, messageGateway.capturedCursorDate);
+        assertEquals(afterMessageId, messageGateway.capturedCursorId);
+        assertEquals(20, messageGateway.capturedLimit);
+        assertEquals(conversationUuid, messageGateway.capturedConversationId.value());
+        assertEquals(2, response.messages().size());
+        assertEquals("Nova mais antiga", response.messages().getFirst().content());
+        CursorUtils.DecodedCursor nextCursor = CursorUtils.decode(response.nextCursor());
+        assertEquals(newestAt, nextCursor.createdAt());
+        assertEquals(newestId, nextCursor.id());
+    }
+
+    @Test
+    void executeSinceRejectsRequesterOutsideConversation() {
+        UUID conversationUuid = UUID.randomUUID();
+        UUID participantUuid = UUID.randomUUID();
+        UUID outsiderUuid = UUID.randomUUID();
+
+        StubConversationGateway conversationGateway = new StubConversationGateway(
+                conversationWithParticipant(conversationUuid, participantUuid)
+        );
+        CapturingMessageGateway messageGateway = new CapturingMessageGateway(List.of());
+        GetChatHistoryUseCase useCase = new GetChatHistoryUseCase(conversationGateway, messageGateway);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> useCase.executeSince(
+                        conversationUuid,
+                        outsiderUuid,
+                        CursorUtils.encode(Instant.parse("2026-03-31T12:00:00Z"), UUID.randomUUID()),
+                        20
+                )
+        );
+
+        assertEquals("Acesso negado: o utilizador não é participante desta conversa.", exception.getMessage());
+        assertEquals(null, messageGateway.capturedConversationId);
+    }
+
+    @Test
     void executePassesNullCursorWhenCursorIsNotProvided() {
         UUID conversationUuid = UUID.randomUUID();
         UUID requesterUuid = UUID.randomUUID();
@@ -190,6 +251,7 @@ class GetChatHistoryUseCaseTest {
         private Instant capturedCursorDate;
         private UUID capturedCursorId;
         private Integer capturedLimit;
+        private boolean forwardQueryCalled;
 
         private CapturingMessageGateway(List<Message> messagesToReturn) {
             this.messagesToReturn = messagesToReturn;
@@ -207,6 +269,16 @@ class GetChatHistoryUseCaseTest {
 
         @Override
         public List<Message> findHistoryBeforeCursor(ConversationId conversationId, Instant cursorDate, UUID cursorId, int limit) {
+            this.capturedConversationId = conversationId;
+            this.capturedCursorDate = cursorDate;
+            this.capturedCursorId = cursorId;
+            this.capturedLimit = limit;
+            return messagesToReturn;
+        }
+
+        @Override
+        public List<Message> findMessagesAfterCursor(ConversationId conversationId, Instant cursorDate, UUID cursorId, int limit) {
+            this.forwardQueryCalled = true;
             this.capturedConversationId = conversationId;
             this.capturedCursorDate = cursorDate;
             this.capturedCursorId = cursorId;

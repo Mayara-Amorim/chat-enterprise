@@ -136,6 +136,94 @@ class MessageJpaRepositoryTest {
         assertEquals("mais antiga", history.get(2).getContent());
     }
 
+    @Test
+    void findMessagesAfterCursorReturnsOnlyNewerMessagesInAscendingOrder() {
+        UUID conversationId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        ConversationEntity conversation = persistConversation(conversationId, creatorId);
+
+        MessageEntity newest = new MessageEntity(
+                UUID.fromString("00000000-0000-0000-0000-000000000003"),
+                conversation,
+                creatorId,
+                "mais nova",
+                MessageStatus.SENT,
+                Instant.parse("2026-03-31T12:00:00Z")
+        );
+        MessageEntity middle = new MessageEntity(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                conversation,
+                creatorId,
+                "intermediaria",
+                MessageStatus.SENT,
+                Instant.parse("2026-03-31T11:00:00Z")
+        );
+        MessageEntity oldest = new MessageEntity(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                conversation,
+                creatorId,
+                "mais antiga",
+                MessageStatus.SENT,
+                Instant.parse("2026-03-31T10:00:00Z")
+        );
+        messageJpaRepository.saveAllAndFlush(List.of(newest, middle, oldest));
+
+        List<MessageEntity> novas = messageJpaRepository.findMessagesAfterCursor(
+                conversationId,
+                Instant.parse("2026-03-31T10:30:00Z"),
+                UUID.fromString("00000000-0000-0000-0000-000000000099"),
+                PageRequest.of(0, 10)
+        );
+
+        assertEquals(2, novas.size());
+        assertEquals("intermediaria", novas.get(0).getContent());
+        assertEquals("mais nova", novas.get(1).getContent());
+    }
+
+    @Test
+    void findMessagesAfterCursorUsesMessageIdAsTieBreakerWhenTimestampMatches() {
+        UUID conversationId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        ConversationEntity conversation = persistConversation(conversationId, creatorId);
+        Instant sameTimestamp = Instant.parse("2026-03-31T11:00:00Z");
+
+        MessageEntity higherId = new MessageEntity(
+                UUID.fromString("00000000-0000-0000-0000-000000000003"),
+                conversation,
+                creatorId,
+                "id-3",
+                MessageStatus.SENT,
+                sameTimestamp
+        );
+        MessageEntity cursorId = new MessageEntity(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                conversation,
+                creatorId,
+                "id-2",
+                MessageStatus.SENT,
+                sameTimestamp
+        );
+        MessageEntity lowerId = new MessageEntity(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                conversation,
+                creatorId,
+                "id-1",
+                MessageStatus.SENT,
+                sameTimestamp
+        );
+        messageJpaRepository.saveAllAndFlush(List.of(higherId, cursorId, lowerId));
+
+        List<MessageEntity> novas = messageJpaRepository.findMessagesAfterCursor(
+                conversationId,
+                sameTimestamp,
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                PageRequest.of(0, 10)
+        );
+
+        assertEquals(1, novas.size());
+        assertEquals("id-3", novas.get(0).getContent());
+    }
+
     private ConversationEntity persistConversation(UUID conversationId, UUID creatorId) {
         ConversationEntity conversation = new ConversationEntity(
                 conversationId,

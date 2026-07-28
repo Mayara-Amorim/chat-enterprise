@@ -19,13 +19,25 @@ public interface MessageJpaRepository extends JpaRepository<MessageEntity, UUID>
 
     @Query(value = "SELECT * FROM messages m " +
             "WHERE m.conversation_id = :conversationId " +
-            "AND (CAST(:cursorDate AS TIMESTAMPTZ) IS NULL OR m.created_at < :cursorDate OR (m.created_at = :cursorDate AND m.id < :cursorId)) " +
+            "AND (CAST(:cursorDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR m.created_at < :cursorDate OR (m.created_at = :cursorDate AND m.id < :cursorId)) " +
             "ORDER BY m.created_at DESC, m.id DESC",
             nativeQuery = true)
     List<MessageEntity> findMessagesBeforeCursor(@Param("conversationId") UUID conversationId,
                                                  @Param("cursorDate") Instant cursorDate,
                                                  @Param("cursorId") UUID cursorId,
                                                  Pageable pageable);
+
+    // Espelho de findMessagesBeforeCursor: traz mensagens MAIS NOVAS que o cursor, em ordem crescente.
+    // Usado no sync ao reconectar (carregar o que chegou enquanto o cliente estava offline).
+    @Query(value = "SELECT * FROM messages m " +
+            "WHERE m.conversation_id = :conversationId " +
+            "AND (CAST(:cursorDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR m.created_at > :cursorDate OR (m.created_at = :cursorDate AND m.id > :cursorId)) " +
+            "ORDER BY m.created_at ASC, m.id ASC",
+            nativeQuery = true)
+    List<MessageEntity> findMessagesAfterCursor(@Param("conversationId") UUID conversationId,
+                                                @Param("cursorDate") Instant cursorDate,
+                                                @Param("cursorId") UUID cursorId,
+                                                Pageable pageable);
 
     //Traz mensagens que o ususario ainda nao leu com NOT EXISTS
     @Query("SELECT m FROM MessageEntity m " +

@@ -824,8 +824,13 @@
                 </tr>
                 <tr>
                     <td>Ver histórico</td>
-                    <td><code>GET /api/chat/conversations/{id}/messages</code></td>
-                    <td>Histórico com paginação por cursor</td>
+                    <td><code>GET /api/chat/conversations/{id}/messages?cursor=...</code></td>
+                    <td>Histórico (mais antigas), paginação por cursor para trás</td>
+                </tr>
+                <tr>
+                    <td>Sincronizar novas</td>
+                    <td><code>GET /api/chat/conversations/{id}/messages?after=...</code></td>
+                    <td>Mensagens que chegaram <strong>depois</strong> do cursor (sync ao reconectar)</td>
                 </tr>
                 <tr>
                     <td>Marcar como lida</td>
@@ -854,6 +859,41 @@
                 </tr>
             </tbody>
         </table>
+
+        <h3>Histórico vs. Sincronização (<code>cursor</code> vs. <code>after</code>)</h3>
+        <p>
+            O mesmo endpoint <code>GET /{id}/messages</code> serve dois objetivos, controlados por
+            parâmetros mutuamente exclusivos:
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parâmetro</th>
+                    <th>Direção</th>
+                    <th>Uso</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>cursor</code></td>
+                    <td>Para trás (mais antigas)</td>
+                    <td>Rolar o histórico da conversa. Sem parâmetro = página mais recente.</td>
+                </tr>
+                <tr>
+                    <td><code>after</code></td>
+                    <td>Para frente (mais novas)</td>
+                    <td>Ao reconectar o WebSocket, buscar o que chegou enquanto o cliente esteve offline.</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            <strong>Fluxo de resiliência:</strong> a entrega em tempo real (Kafka → WebSocket) é
+            best-effort. A garantia de que nenhuma mensagem se perde vem do banco: o cliente guarda o
+            cursor da última mensagem recebida (campo <code>nextCursor</code> da resposta) e, ao
+            (re)conectar, chama <code>?after=&lt;cursor&gt;</code> antes de confiar no tempo real.
+            Isso recupera tanto um evento que o Kafka não publicou quanto uma entrega de WebSocket que
+            caiu. Ambos os parâmetros retornam <code>{ "messages": [...], "nextCursor": "..." }</code>.
+        </p>
     </div>
 
     <!-- RESUMO HEADERS -->

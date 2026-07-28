@@ -16,6 +16,13 @@ public interface MessageGateway {
     Message save(Message message, ConversationId conversationId);
     Optional<Message> findById(MessageId messageId);
     List<Message> findHistoryBeforeCursor(ConversationId conversationId, Instant cursorDate, UUID cursorId, int limit);
+
+    // ponytail: default lançando — só a impl real (MessageRepositoryGateway) precisa disso;
+    // evita churn em 6 stubs de teste que nao paginam pra frente.
+    default List<Message> findMessagesAfterCursor(ConversationId conversationId, Instant cursorDate, UUID cursorId, int limit) {
+        throw new UnsupportedOperationException();
+    }
+
     List<Message> findUnreadByParticipant(ConversationId conversationId, UserId userId);
     void saveAll(List<Message> messages, ConversationId conversationId);
 }
