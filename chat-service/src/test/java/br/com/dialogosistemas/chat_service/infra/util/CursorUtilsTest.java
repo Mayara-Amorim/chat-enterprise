@@ -24,6 +24,19 @@ class CursorUtilsTest {
     }
 
     @Test
+    void encodeAndDecodePreservesSubMillisecondPrecision() {
+        // Postgres timestamptz guarda microssegundos; o cursor precisa preservar isso,
+        // senao a mensagem do cursor (boundary) reaparece na busca com ?after= (duplicata).
+        Instant createdAt = Instant.parse("2026-07-28T14:27:14.262141Z");
+        UUID messageId = UUID.fromString("227dfa01-298b-45b2-9b15-e03b5839f113");
+
+        CursorUtils.DecodedCursor decoded = CursorUtils.decode(CursorUtils.encode(createdAt, messageId));
+
+        assertEquals(createdAt, decoded.createdAt());
+        assertEquals(messageId, decoded.id());
+    }
+
+    @Test
     void encodeReturnsNullWhenInputIsIncomplete() {
         assertNull(CursorUtils.encode(null, UUID.randomUUID()));
         assertNull(CursorUtils.encode(Instant.now(), null));

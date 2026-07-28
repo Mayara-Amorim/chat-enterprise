@@ -17,7 +17,9 @@ public final class CursorUtils {
             return null;
         }
 
-        String raw = createdAt.toEpochMilli() + SEPARATOR + id;
+        // ISO-8601 preserva a precisao de microssegundos do timestamptz; toEpochMilli() truncava
+        // pra milissegundo e fazia a mensagem do cursor reaparecer no ?after= (duplicata no sync).
+        String raw = createdAt.toString() + SEPARATOR + id;
         return Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -30,7 +32,7 @@ public final class CursorUtils {
             String raw = new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8);
             String[] parts = raw.split(SEPARATOR, 2);
             return new DecodedCursor(
-                    Instant.ofEpochMilli(Long.parseLong(parts[0])),
+                    Instant.parse(parts[0]),
                     UUID.fromString(parts[1])
             );
         } catch (Exception exception) {
