@@ -43,6 +43,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Resolve skew de protobuf: google-cloud-storage prende protobuf-java 4.28.3, mas
+                 opentelemetry-proto (via micrometer-registry-otlp) exige runtime >= gencode 4.32.0.
+                 Compat. retroativa: runtime >= gencode, entao o gencode 4.28.3 do GCS segue valido.
+                 PROTEGIDO POR: ContextLoadsWithOtlpEnabledTest. Nao remover sem rodar o teste.
+                 Ver docs/superpowers/specs/2026-07-28-observabilidade-metricas-design.md secao 3.1. -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>4.32.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -67,6 +77,26 @@
                 <configuration>
                     <argLine>--enable-preview</argLine>
                 </configuration>
+            </plugin>
+
+            <!-- Protege o pin do protobuf (spec 3.1.1): falha na convergencia se alguma dependencia
+                 exigir versao MAIOR que a resolvida, em vez de crashar no runtime. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-dependency-versions</id>
+                        <phase>validate</phase>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireUpperBoundDeps/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -66,6 +66,17 @@
             <artifactId>spring-boot-starter-micrometer-metrics</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-otlp</artifactId>
+        </dependency>
+        <!-- Boot 4: satisfaz o @ConditionalOnClass (OpenTelemetryProperties) da autoconfig OTLP e faz
+             o binding de management.opentelemetry.resource-attributes. Traz opentelemetry-api/sdk;
+             NAO traz tracing. Sem isto, a autoconfig OTLP nao dispara em silencio. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-opentelemetry</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
