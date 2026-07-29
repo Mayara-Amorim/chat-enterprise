@@ -226,7 +226,7 @@ class MarkConversationAsReadUseCaseTest {
     private static final class CapturingChatKafkaProducer extends ChatKafkaProducer {
         List<MessageStatusUpdatedEventDTO> statusEvents = new ArrayList<>();
 
-        private CapturingChatKafkaProducer() { super(null); }
+        private CapturingChatKafkaProducer() { super(null, null); }
 
         @Override
         public void publishStatusUpdate(MessageStatusUpdatedEventDTO event) {

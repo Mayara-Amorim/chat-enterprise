@@ -304,7 +304,7 @@ class DeleteMessageUseCaseTest {
         private MessageEditedEventDTO editedEvent;
 
         private CapturingChatKafkaProducer() {
-            super(null);
+            super(null, null);
         }
 
         @Override

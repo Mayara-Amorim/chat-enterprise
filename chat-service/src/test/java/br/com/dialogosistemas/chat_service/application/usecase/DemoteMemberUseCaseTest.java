@@ -46,7 +46,7 @@ class DemoteMemberUseCaseTest {
     }
     private static final class FakeKafka extends ChatKafkaProducer {
         List<GroupEventDTO> events = new ArrayList<>();
-        FakeKafka() { super(null); }
+        FakeKafka() { super(null, null); }
         @Override public void publishGroupEvent(GroupEventDTO e) { events.add(e); }
     }
 }

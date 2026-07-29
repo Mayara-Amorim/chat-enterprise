@@ -152,7 +152,7 @@ class ConfirmUploadUseCaseTest {
 
     private static class CapturingKafkaProducer extends ChatKafkaProducer {
         MessageSentEventDTO sentEvent;
-        CapturingKafkaProducer() { super(null); }
+        CapturingKafkaProducer() { super(null, null); }
         @Override public void send(MessageSentEventDTO event) { this.sentEvent = event; }
     }
 }

@@ -197,7 +197,7 @@ class SendMessageUseCaseTest {
     private static final class CapturingChatKafkaProducer extends ChatKafkaProducer {
         MessageSentEventDTO sentEvent;
 
-        private CapturingChatKafkaProducer() { super(null); }
+        private CapturingChatKafkaProducer() { super(null, null); }
 
         @Override
         public void send(MessageSentEventDTO event) {

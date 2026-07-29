@@ -162,7 +162,7 @@ class CreateConversationUseCaseTest {
         private final List<MessageSentEventDTO> sentEvents = new ArrayList<>();
 
         private CapturingChatKafkaProducer() {
-            super(null);
+            super(null, null);
         }
 
         @Override
