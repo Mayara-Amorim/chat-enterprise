@@ -102,6 +102,15 @@ steps:
   # CUSTO: passa a pagar CPU por instancia VIVA, nao por request. Com min-instances=0 so
   # ha cobranca enquanto houver instancia no ar, mas a conta muda. Isso entra no orcamento.
   #
+  # --timeout=3600 existe por causa do WEBSOCKET, nao de request HTTP lenta.
+  # No Cloud Run o timeout vale para a requisicao inteira, e uma conexao WebSocket E uma
+  # requisicao. Com o default de 300s, TODA sessao de chat cai a cada 5 minutos — medido:
+  # sockets abertos as 18:19 morreram com code 1006 as ~18:24, sem ninguem derrubar nada.
+  # 3600s e o maximo do Cloud Run; o cliente ainda precisa reconectar de hora em hora.
+  #
+  # CUSTO: conexao aberta = requisicao ativa = instancia viva. Somado a --no-cpu-throttling,
+  # significa pagar CPU por instancia com socket aberto, mesmo sem trafego. Entra no orcamento.
+  #
   # FAIL-FAST: OTLP_METRICS_URL e OTLP_AUTH_HEADER sao obrigatorios no profile prod
   # (application-prod.properties usa placeholder sem default). Faltando qualquer um dos
   # dois, o boot falha — de proposito, para nao subir verde e sem metrica. O secret
@@ -120,6 +129,7 @@ steps:
           --memory=512Mi \
           --cpu=1 \
           --no-cpu-throttling \
+          --timeout=3600 \
           --min-instances=0 \
           --max-instances=2 \
           --set-env-vars="SPRING_PROFILES_ACTIVE=prod,JWT_JWKS_URI=$${AUTH_URL}/.well-known/jwks.json,OTLP_METRICS_URL=${_OTLP_METRICS_URL}" \
