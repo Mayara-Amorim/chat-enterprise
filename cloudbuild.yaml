@@ -91,6 +91,21 @@ steps:
   # ------------------------------------------
   # Step 8: Deploy Cloud Run — chat-service
   # ------------------------------------------
+  # --no-cpu-throttling e REQUISITO de observabilidade, nao afinacao de performance.
+  # (spec Fatia A secao 3.4, criterio de aceite 8)
+  #
+  # O OtlpMeterRegistry empurra metricas num scheduler de background. Com CPU throttled,
+  # a instancia so tem CPU durante request — o push atrasa ou nao roda. O caso pior e
+  # justamente a instancia sem socket ativo, que e exatamente quando ela deveria pushar
+  # o gauge de online zerado. Sem esta flag, o dashboard superestima usuarios online.
+  #
+  # CUSTO: passa a pagar CPU por instancia VIVA, nao por request. Com min-instances=0 so
+  # ha cobranca enquanto houver instancia no ar, mas a conta muda. Isso entra no orcamento.
+  #
+  # FAIL-FAST: OTLP_METRICS_URL e OTLP_AUTH_HEADER sao obrigatorios no profile prod
+  # (application-prod.properties usa placeholder sem default). Faltando qualquer um dos
+  # dois, o boot falha — de proposito, para nao subir verde e sem metrica. O secret
+  # 'otlp-auth-header' precisa existir no Secret Manager ANTES do primeiro deploy.
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -104,15 +119,19 @@ steps:
           --port=8080 \
           --memory=512Mi \
           --cpu=1 \
+          --no-cpu-throttling \
           --min-instances=0 \
           --max-instances=2 \
-          --set-env-vars="SPRING_PROFILES_ACTIVE=prod,JWT_JWKS_URI=$${AUTH_URL}/.well-known/jwks.json" \
-          --set-secrets="SPRING_DATASOURCE_URL=chat-datasource-url:latest,SPRING_DATASOURCE_USERNAME=chat-datasource-username:latest,SPRING_DATASOURCE_PASSWORD=chat-datasource-password:latest,SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-bootstrap-servers:latest,SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG=kafka-sasl-jaas-config:latest,SPRING_REDIS_URL=redis-url:latest"
+          --set-env-vars="SPRING_PROFILES_ACTIVE=prod,JWT_JWKS_URI=$${AUTH_URL}/.well-known/jwks.json,OTLP_METRICS_URL=${_OTLP_METRICS_URL}" \
+          --set-secrets="SPRING_DATASOURCE_URL=chat-datasource-url:latest,SPRING_DATASOURCE_USERNAME=chat-datasource-username:latest,SPRING_DATASOURCE_PASSWORD=chat-datasource-password:latest,SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-bootstrap-servers:latest,SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG=kafka-sasl-jaas-config:latest,SPRING_REDIS_URL=redis-url:latest,OTLP_AUTH_HEADER=otlp-auth-header:latest"
 
 # Substituicoes customizaveis (podem ser override no trigger)
 substitutions:
   _REGION: 'us-central1'
   _REPO: 'chat-platform'
+  # Endpoint OTLP do Grafana Cloud (nao e segredo — o segredo e o token, que vai por Secret
+  # Manager em OTLP_AUTH_HEADER). A zona e a da stack do Grafana, nao a do Cloud Run.
+  _OTLP_METRICS_URL: 'https://otlp-gateway-prod-sa-east-1.grafana.net/otlp/v1/metrics'
 
 # Imagens a serem publicadas (para referencia)
 images:

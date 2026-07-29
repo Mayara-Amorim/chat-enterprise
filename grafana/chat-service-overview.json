@@ -1,0 +1,165 @@
+{
+  "title": "chat-service — Overview",
+  "uid": "chat-service-overview",
+  "tags": ["chat-service", "observabilidade", "fatia-a"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Mensagens/s",
+      "description": "Publicacoes CONFIRMADAS no broker (callback de sucesso), nao tentativas. Usa rate() de proposito: serie de instancia morta contribui por ~5min e decai sozinha — isso e media movel, nao bug. Nao trocar por last_over_time aqui.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(rate(chat_messages_sent_total[5m]))",
+          "legendFormat": "mensagens/s"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Usuarios Online",
+      "description": "DEFASAGEM DE ATE 90s EM SCALE-DOWN. Push OTLP nao emite stale marker, entao a janela de 90s (3x o step de 30s) substitui o lookback de 300s do Mimir. Nao aperte a janela abaixo de 3x o step: com 2x, uma unica falha de push faz a instancia sumir e o painel pisca para baixo. Conta usuarios (principal), nao sessoes — 2 abas = 1.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "decimals": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(last_over_time(chat_users_online[90s]))",
+          "legendFormat": "online"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Falhas de publicacao Kafka",
+      "description": "Counters pre-registrados com 0 no boot para todos os topicos conhecidos. Por isso 'sem dados' aqui significa 'a app parou de reportar', e nao 'nunca houve falha' — os dois casos seriam indistinguiveis sem o pre-registro.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(rate(chat_kafka_publish_failures_total[5m])) by (topic)",
+          "legendFormat": "{{topic}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Consumer lag por topico",
+      "description": "max, nao sum: somar particoes vivas com particoes-fantasma de instancia morta e ruido. Mesma janela de 90s do gauge de online, pelo mesmo motivo (staleness de push).",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "max(last_over_time(kafka_consumer_fetch_manager_records_lag[90s])) by (topic)",
+          "legendFormat": "{{topic}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Consumer lag por particao (valida a Fatia B)",
+      "description": "Existe porque 'max by (topic)' ESCONDE uma particao travada quando as outras estao saudaveis — e a particao travada e justamente o sinal que valida o fan-out. Hoje todo topico tem uma particao so; este painel fica util quando isso mudar.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "max(last_over_time(kafka_consumer_fetch_manager_records_lag[90s])) by (topic, partition)",
+          "legendFormat": "{{topic}} / p{{partition}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "JVM heap usado",
+      "description": "NOME DE METRICA NAO VERIFICADO NO EXPLORE (diferente dos paineis acima). Se vier vazio, confira o nome real com: group by (__name__) ({job=\"chat-service\", __name__=~\"jvm_memory.*\"})",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(last_over_time(jvm_memory_used_bytes{area=\"heap\"}[90s])) by (instance)",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "HTTP p95",
+      "description": "NOME DE METRICA NAO VERIFICADO NO EXPLORE. Depende de o histograma de http.server.requests ser exportado com buckets pelo OTLP; se o _bucket nao existir, este painel fica vazio em silencio. Confira antes de confiar nele.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    }
+  ]
+}
