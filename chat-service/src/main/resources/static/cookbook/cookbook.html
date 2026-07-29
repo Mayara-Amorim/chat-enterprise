@@ -444,6 +444,8 @@
             <li><a href="#step5">Passo 5 — Criar uma Conversa</a></li>
             <li><a href="#step6">Passo 6 — Enviar Mensagem</a></li>
             <li><a href="#step7">Passo 7 — Consultar Inbox e Histórico</a></li>
+            <li><a href="#admin-list">Administração — Listar Tenants</a></li>
+            <li><a href="#admin-delete">Administração — Desativar um Tenant</a></li>
             <li><a href="#headers">Resumo dos Headers</a></li>
             <li><a href="#cicd">CI/CD — Pipeline de Deploy na GCP</a>
                 <ol style="margin-top: 0.3rem;">
@@ -895,6 +897,91 @@
             caiu. Ambos os parâmetros retornam <code>{ "messages": [...], "nextCursor": "..." }</code>.
         </p>
     </div>
+
+    <!-- ADMINISTRACAO -->
+    <h2 id="admin-list">Administração — Listar Tenants</h2>
+
+    <p>
+        Fora do fluxo dos passos acima existem duas operações administrativas, esta e a próxima.
+        Ambas usam a <code>X-Master-Key</code>, a mesma do Passo 1 — não a <code>X-API-Key</code> do tenant.
+    </p>
+
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span>/api/auth/tenants?page=0&amp;size=50</span>
+        <span class="service-badge service-auth">Auth Service</span>
+    </div>
+
+    <p>
+        Retorna ativos e inativos, dos mais recentes para os mais antigos. Existe porque a criação
+        devolve o <code>tenantId</code> <strong>uma única vez</strong>: sem listagem, um tenant cujo ID
+        se perdeu ficaria inalcançável para desativação.
+    </p>
+
+    <h3>Parâmetros</h3>
+    <table>
+        <thead>
+            <tr><th>Parâmetro</th><th>Padrão</th><th>Observação</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>page</code></td><td><code>0</code></td><td>índice base zero</td></tr>
+            <tr><td><code>size</code></td><td><code>50</code></td><td>teto de <code>200</code>; acima disso retorna <code>400</code></td></tr>
+        </tbody>
+    </table>
+
+    <h3>Response (200)</h3>
+    <pre><code>[
+  {
+    <span class="json-key">"tenantId"</span>: <span class="json-string">"07a0a59c-c578-4325-bb78-d1fbd01cc655"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"SESI Nacional"</span>,
+    <span class="json-key">"active"</span>: <span class="json-string">true</span>,
+    <span class="json-key">"createdAt"</span>: <span class="json-string">"2026-07-29T12:00:00Z"</span>
+  }
+]</code></pre>
+
+    <div class="alert alert-warning">
+        <strong>A listagem nunca retorna a API key nem o hash dela.</strong> A key em texto plano só
+        existe no instante da criação. Se você a perdeu, não há como recuperá-la — crie outro tenant.
+    </div>
+
+    <h2 id="admin-delete">Administração — Desativar um Tenant</h2>
+
+    <div class="endpoint">
+        <span class="method delete">DELETE</span>
+        <span>/api/auth/tenants/{tenantId}</span>
+        <span class="service-badge service-auth">Auth Service</span>
+    </div>
+
+    <div class="header-info">
+        Header: <code>X-Master-Key</code> &rarr; valor definido na variável de ambiente <code>AUTH_MASTER_KEY</code>
+    </div>
+
+    <h3>Response (204)</h3>
+    <p>Sem corpo. A partir daí, a <code>apiKey</code> daquele tenant passa a receber <code>401</code>.</p>
+
+    <div class="alert alert-warning">
+        <strong>Desativa, não apaga.</strong> O registro do tenant permanece no banco. O
+        <code>tenantId</code> é referenciado por usuários no auth-service e por conversas no
+        chat-service — apagar a linha deixaria esses dados órfãos. O que muda é o efeito prático:
+        o filtro de autenticação recusa qualquer requisição de tenant inativo.
+    </div>
+
+    <div class="alert alert-info">
+        <strong>Idempotente.</strong> Desativar um tenant já inativo também retorna <code>204</code>,
+        não erro. Quem limpa ambiente costuma repetir o comando, e falhar na segunda chamada
+        obrigaria o chamador a tratar um caso sem consequência.
+    </div>
+
+    <h3>Respostas de erro</h3>
+    <table>
+        <thead>
+            <tr><th>Código</th><th>Quando</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>401</code></td><td><code>X-Master-Key</code> ausente ou inválida</td></tr>
+            <tr><td><code>404</code></td><td><code>tenantId</code> não existe</td></tr>
+        </tbody>
+    </table>
 
     <!-- RESUMO HEADERS -->
     <h2 id="headers">Resumo dos Headers</h2>

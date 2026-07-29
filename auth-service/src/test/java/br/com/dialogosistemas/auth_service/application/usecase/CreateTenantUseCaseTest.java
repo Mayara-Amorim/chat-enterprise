@@ -39,5 +39,6 @@ class CreateTenantUseCaseTest {
         @Override public Tenant save(Tenant tenant) { this.saved = tenant; return tenant; }
         @Override public Optional<Tenant> findById(TenantId id) { return Optional.empty(); }
         @Override public Optional<Tenant> findByApiKeyHash(String hash) { return Optional.empty(); }
+        @Override public java.util.List<Tenant> findAll(int page, int size) { return java.util.List.of(); }
     }
 }
