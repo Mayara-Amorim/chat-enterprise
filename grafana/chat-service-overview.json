@@ -125,7 +125,7 @@
       "id": 6,
       "type": "timeseries",
       "title": "JVM heap usado",
-      "description": "NOME DE METRICA NAO VERIFICADO NO EXPLORE (diferente dos paineis acima). Se vier vazio, confira o nome real com: group by (__name__) ({job=\"chat-service\", __name__=~\"jvm_memory.*\"})",
+      "description": "Verificado no Explore: retorna as tres regioes do G1 (Eden, Old Gen, Survivor). O sum() by (instance) agrega as tres — e o heap total por instancia, nao por regiao.",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
@@ -144,20 +144,31 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "HTTP p95",
-      "description": "NOME DE METRICA NAO VERIFICADO NO EXPLORE. Depende de o histograma de http.server.requests ser exportado com buckets pelo OTLP; se o _bucket nao existir, este painel fica vazio em silencio. Confira antes de confiar nele.",
+      "title": "HTTP — p95 e throughput",
+      "description": "Nomes confirmados no Explore: http_server_requests_milliseconds_{bucket,count,sum}. Atencao ao sufixo — este setup exporta duracoes em MILISSEGUNDOS, nao em segundos.\n\nO _bucket existe SEM precisar ligar percentiles-histogram: o registry OTLP do Micrometer exporta Timer como histograma de buckets explicitos por padrao (diferente do registry Prometheus). Ou seja, o custo de cardinalidade dos buckets ja esta sendo pago — o p95 sai de graca.",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
-        "defaults": { "unit": "s", "min": 0, "custom": { "fillOpacity": 10 } },
-        "overrides": []
+        "defaults": { "unit": "ms", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "req/s" },
+            "properties": [{ "id": "unit", "value": "reqps" }]
+          }
+        ]
       },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_milliseconds_bucket[5m])) by (le))",
           "legendFormat": "p95"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(rate(http_server_requests_milliseconds_count[5m]))",
+          "legendFormat": "req/s"
         }
       ]
     }

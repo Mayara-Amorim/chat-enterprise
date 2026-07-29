@@ -57,6 +57,24 @@ class OtlpFailFastConfigTest {
     }
 
     @Test
+    void kafkaConsumerFilterKeepsFetchManagerEnabled() {
+        Properties base = load("/application.properties");
+
+        String negado = base.getProperty("management.metrics.enable.kafka.consumer");
+        if (!"false".equals(negado)) {
+            return; // filtro nao aplicado: nada a proteger
+        }
+
+        // As duas linhas andam juntas. Negar kafka.consumer sem reabilitar fetch.manager derruba
+        // kafka.consumer.fetch.manager.records.lag — e os dois paineis de consumer lag do dashboard
+        // ficam vazios SEM ERRO. Este e o modo de falha silenciosa que o corte de cardinalidade
+        // introduz (spec 3.5.1).
+        assertEquals("true", base.getProperty("management.metrics.enable.kafka.consumer.fetch.manager"),
+                "kafka.consumer esta negado mas fetch.manager nao foi reabilitado: o consumer lag "
+                        + "some e os paineis 4 e 5 ficam vazios em silencio");
+    }
+
+    @Test
     void stepAndTemporalityArePinned() {
         Properties base = load("/application.properties");
 
