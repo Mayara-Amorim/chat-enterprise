@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -55,7 +56,7 @@ public class GroupManagementController {
             @ApiResponse(responseCode = "409", description = "Usuario ja e participante")
     })
     public void addMembers(@PathVariable UUID conversationId,
-                           @RequestBody AddMembersRequestDTO request,
+                           @Valid @RequestBody AddMembersRequestDTO request,
                            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         UUID requesterId = UUID.fromString(jwt.getSubject());
         addMemberUseCase.execute(conversationId, request.userIds(), requesterId);
@@ -110,7 +111,7 @@ public class GroupManagementController {
             @ApiResponse(responseCode = "409", description = "Grupo ja dissolvido")
     })
     public ResponseEntity<Void> leaveGroup(@PathVariable UUID conversationId,
-                                            @RequestBody LeaveGroupRequestDTO request,
+                                            @Valid @RequestBody LeaveGroupRequestDTO request,
                                             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getSubject());
         leaveGroupUseCase.execute(conversationId, userId, request.deleteConversation());
@@ -124,7 +125,7 @@ public class GroupManagementController {
             @ApiResponse(responseCode = "403", description = "Sem permissao")
     })
     public ResponseEntity<Void> updateSettings(@PathVariable UUID conversationId,
-                                                @RequestBody UpdateSettingsRequestDTO request,
+                                                @Valid @RequestBody UpdateSettingsRequestDTO request,
                                                 @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         UUID requesterId = UUID.fromString(jwt.getSubject());
         updateGroupSettingsUseCase.execute(conversationId, requesterId, request.messagingPermission());

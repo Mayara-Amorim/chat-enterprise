@@ -6,11 +6,13 @@ import br.com.dialogosistemas.chat_service.application.DTO.RequestUploadResponse
 import br.com.dialogosistemas.chat_service.application.usecase.ConfirmUploadUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.GetAttachmentDownloadUrlUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.RequestUploadUseCase;
+import br.com.dialogosistemas.shared_kernel.infra.ratelimit.RateLimit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -41,11 +43,13 @@ public class FileUploadController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Signed URL gerada"),
             @ApiResponse(responseCode = "400", description = "Content-type ou tamanho invalido"),
-            @ApiResponse(responseCode = "403", description = "Usuario nao e participante")
+            @ApiResponse(responseCode = "403", description = "Usuario nao e participante"),
+            @ApiResponse(responseCode = "429", description = "Limite de 30 chamadas/minuto excedido. Header Retry-After indica os segundos ate liberar.")
     })
+    @RateLimit(limit = 30)
     public ResponseEntity<RequestUploadResponseDTO> requestUpload(
             @PathVariable UUID conversationId,
-            @RequestBody RequestUploadRequestDTO request,
+            @Valid @RequestBody RequestUploadRequestDTO request,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
 
         UUID userId = UUID.fromString(jwt.getSubject());
@@ -60,11 +64,13 @@ public class FileUploadController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Mensagem criada com attachments"),
             @ApiResponse(responseCode = "400", description = "Upload ID invalido ou expirado"),
-            @ApiResponse(responseCode = "403", description = "Upload nao pertence ao usuario")
+            @ApiResponse(responseCode = "403", description = "Upload nao pertence ao usuario"),
+            @ApiResponse(responseCode = "429", description = "Limite de 30 chamadas/minuto excedido. Header Retry-After indica os segundos ate liberar.")
     })
+    @RateLimit(limit = 30)
     public ResponseEntity<Void> confirmUpload(
             @PathVariable UUID conversationId,
-            @RequestBody ConfirmUploadRequestDTO request,
+            @Valid @RequestBody ConfirmUploadRequestDTO request,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
 
         UUID userId = UUID.fromString(jwt.getSubject());
@@ -78,8 +84,10 @@ public class FileUploadController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Download URL gerada"),
             @ApiResponse(responseCode = "403", description = "Usuario nao e participante"),
-            @ApiResponse(responseCode = "404", description = "Mensagem ou attachment nao encontrado")
+            @ApiResponse(responseCode = "404", description = "Mensagem ou attachment nao encontrado"),
+            @ApiResponse(responseCode = "429", description = "Limite de 30 chamadas/minuto excedido. Header Retry-After indica os segundos ate liberar.")
     })
+    @RateLimit(limit = 30)
     public ResponseEntity<GetAttachmentDownloadUrlUseCase.DownloadUrlResponse> getDownloadUrl(
             @PathVariable UUID messageId,
             @PathVariable UUID fileId,

@@ -446,6 +446,7 @@
             <li><a href="#step7">Passo 7 — Consultar Inbox e Histórico</a></li>
             <li><a href="#admin-list">Administração — Listar Tenants</a></li>
             <li><a href="#admin-delete">Administração — Desativar um Tenant</a></li>
+            <li><a href="#rate-limit">Limites de uso (429)</a></li>
             <li><a href="#headers">Resumo dos Headers</a></li>
             <li><a href="#cicd">CI/CD — Pipeline de Deploy na GCP</a>
                 <ol style="margin-top: 0.3rem;">
@@ -982,6 +983,72 @@
             <tr><td><code>404</code></td><td><code>tenantId</code> não existe</td></tr>
         </tbody>
     </table>
+
+    <!-- RATE LIMIT -->
+    <h2 id="rate-limit">Limites de uso (429)</h2>
+
+    <p>
+        Alguns endpoints têm limite de frequência, para conter abuso e custo — os que geram URLs
+        assinadas no GCS, o que emite tokens JWT e o de envio de mensagem. Ao exceder, a API responde
+        <code>429 Too Many Requests</code> com o header <code>Retry-After</code>, cujo valor é
+        <strong>o número de segundos até a cota liberar</strong>.
+    </p>
+
+    <table>
+        <thead>
+            <tr><th>Serviço</th><th>Endpoint</th><th>Limite</th><th>Contado por</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="service-badge service-chat">Chat</span></td>
+                <td><code>POST /api/conversations/{conversationId}/upload/request</code></td>
+                <td>30/min</td><td>usuário</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-chat">Chat</span></td>
+                <td><code>POST /api/conversations/{conversationId}/upload/confirm</code></td>
+                <td>30/min</td><td>usuário</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-chat">Chat</span></td>
+                <td><code>GET /api/messages/{messageId}/attachment/{fileId}</code></td>
+                <td>30/min</td><td>usuário</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-chat">Chat</span></td>
+                <td><code>POST /api/chat/conversations/messages</code></td>
+                <td>60/min</td><td>usuário</td>
+            </tr>
+            <tr>
+                <td><span class="service-badge service-auth">Auth</span></td>
+                <td><code>POST /api/auth/token</code></td>
+                <td>10/min</td><td>API key do tenant</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>
+        O <code>POST /api/auth/token</code> é contado por <strong>API key</strong>, e não por usuário,
+        porque nesse ponto ainda não existe usuário autenticado — o token está sendo emitido
+        justamente ali. Quem responde pelo consumo é o tenant dono da chave.
+    </p>
+
+    <h3>Response (429)</h3>
+    <pre><code>HTTP/1.1 429 Too Many Requests
+Retry-After: 42</code></pre>
+
+    <p>
+        <strong>Como tratar no cliente:</strong> espere os segundos indicados em
+        <code>Retry-After</code> antes de repetir. Não tente de novo imediatamente e não use
+        backoff fixo próprio — o valor devolvido é o tempo real que falta na janela.
+    </p>
+
+    <p>
+        A janela é fixa, não deslizante: o contador começa na primeira chamada e zera ao fim do
+        minuto. Na virada de duas janelas adjacentes é possível passar até o dobro do limite num
+        intervalo curto. Isso é aceito de propósito — o objetivo é conter abuso e custo, não dosar
+        tráfego com precisão.
+    </p>
 
     <!-- RESUMO HEADERS -->
     <h2 id="headers">Resumo dos Headers</h2>

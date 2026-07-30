@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -68,7 +69,7 @@ public class TenantController {
             @ApiResponse(responseCode = "401", description = "Master key invalida ou ausente")
     })
     @SecurityRequirement(name = "masterKey")
-    public CreateTenantResponseDTO createTenant(@RequestBody CreateTenantRequestDTO request) {
+    public CreateTenantResponseDTO createTenant(@Valid @RequestBody CreateTenantRequestDTO request) {
         return createTenantUseCase.execute(request);
     }
 

@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,7 +45,7 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "API key invalida ou ausente")
     })
     public ProvisionUserResponseDTO provisionUser(
-            @RequestBody ProvisionUserRequestDTO request,
+            @Valid @RequestBody ProvisionUserRequestDTO request,
             @Parameter(hidden = true) HttpServletRequest httpRequest) {
         TenantId tenantId = (TenantId) httpRequest.getAttribute("tenantId");
         if (tenantId == null) {

@@ -20,10 +20,31 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-json</artifactId>
         </dependency>
+        <!-- Rate limiting (429 + Retry-After). O contador precisa ser compartilhado entre as
+             instancias do Cloud Run, senao o teto real vira N x o limite configurado.
+             A URL do Redis ja estava em application.properties e o secret ja era injetado no
+             Cloud Run desde antes — o que faltava era o starter, sem o qual o Spring ignorava
+             a propriedade inteira. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!-- provided: quem consome o shared-kernel ja e uma aplicacao web e traz o starter-web.
+             Assim o interceptor compila aqui sem obrigar futuros consumidores nao-web a virar web. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

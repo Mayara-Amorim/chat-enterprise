@@ -12,11 +12,13 @@ import br.com.dialogosistemas.chat_service.application.usecase.GetChatHistoryUse
 import br.com.dialogosistemas.chat_service.application.usecase.GetInboxUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.MarkConversationAsReadUseCase;
 import br.com.dialogosistemas.chat_service.application.usecase.SendMessageUseCase;
+import br.com.dialogosistemas.shared_kernel.infra.ratelimit.RateLimit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -65,7 +67,7 @@ public class ChatController {
             @ApiResponse(responseCode = "201", description = "Conversa criada"),
             @ApiResponse(responseCode = "401", description = "Token JWT invalido")
     })
-    public void createConversation(@RequestBody CreateConversationRequestDTO request,
+    public void createConversation(@Valid @RequestBody CreateConversationRequestDTO request,
                                    @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         UUID creatorId = UUID.fromString(jwt.getSubject());
         String tenantClaim = jwt.getClaimAsString("tenant_id");
@@ -85,9 +87,11 @@ public class ChatController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Mensagem enviada"),
             @ApiResponse(responseCode = "400", description = "Conversa nao encontrada"),
-            @ApiResponse(responseCode = "403", description = "Usuario nao e participante da conversa")
+            @ApiResponse(responseCode = "403", description = "Usuario nao e participante da conversa"),
+            @ApiResponse(responseCode = "429", description = "Limite de 60 mensagens/minuto excedido. Header Retry-After indica os segundos ate liberar.")
     })
-    public void sendMessage(@RequestBody SendMessageRequestDTO request,
+    @RateLimit(limit = 60)
+    public void sendMessage(@Valid @RequestBody SendMessageRequestDTO request,
                             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         UUID senderId = UUID.fromString(jwt.getSubject());
         sendMessageUseCase.execute(request, senderId);
@@ -151,7 +155,7 @@ public class ChatController {
     public ResponseEntity<Void> editMessage(
             @PathVariable UUID conversationId,
             @PathVariable UUID messageId,
-            @RequestBody EditMessageRequestDTO request,
+            @Valid @RequestBody EditMessageRequestDTO request,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
 
         UUID requesterId = UUID.fromString(jwt.getSubject());
