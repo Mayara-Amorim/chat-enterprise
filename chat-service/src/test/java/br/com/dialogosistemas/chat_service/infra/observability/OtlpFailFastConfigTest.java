@@ -75,6 +75,18 @@ class OtlpFailFastConfigTest {
     }
 
     @Test
+    void redisHealthIndicatorStaysDisabled() {
+        Properties base = load("/application.properties");
+
+        // O indicador do Redis chama INFO, negado pelo Upstash ("NOPERM"). Ligado, /actuator/health
+        // fica DOWN para sempre com a aplicacao servindo normalmente — observado em 2026-07-30 nos
+        // dois servicos. E confunde as coisas: o rate limit falha-aberto, entao Redis indisponivel
+        // nao e indisponibilidade do servico. O sinal correto e o WARN do RateLimitInterceptor.
+        assertEquals("false", base.getProperty("management.health.redis.enabled"),
+                "health indicator do Redis ligado reporta DOWN eternamente contra Upstash");
+    }
+
+    @Test
     void stepAndTemporalityArePinned() {
         Properties base = load("/application.properties");
 

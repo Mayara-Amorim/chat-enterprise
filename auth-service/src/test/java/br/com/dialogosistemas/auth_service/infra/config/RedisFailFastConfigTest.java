@@ -58,6 +58,19 @@ class RedisFailFastConfigTest {
      * configuracao de producao. (O OtlpFailFastConfigTest do chat-service usa classpath sem
      * problema porque la nao existe properties de teste para sombrear.)
      */
+    @Test
+    void deve_manter_o_health_indicator_do_redis_desligado() {
+        Properties base = load("application.properties");
+
+        // O indicador chama INFO, que o Upstash nega ao usuario padrao ("NOPERM"). Ligado, ele
+        // deixa /actuator/health em DOWN permanente com a aplicacao sadia — e, se algum dia uma
+        // sonda do Cloud Run ou um uptime check apontar para esse endpoint, vira restart em loop.
+        // Alem disso, o rate limit falha-aberto: Redis fora nao e servico fora.
+        assertEquals("false", base.getProperty("management.health.redis.enabled"),
+                "o health indicator do Redis precisa ficar desligado; ligado ele reporta DOWN "
+                        + "eternamente contra Upstash e confunde disponibilidade com protecao de custo");
+    }
+
     private static Properties load(String nomeArquivo) {
         Path caminho = Path.of("src", "main", "resources", nomeArquivo);
         assertTrue(Files.exists(caminho), "arquivo nao encontrado: " + caminho.toAbsolutePath());
