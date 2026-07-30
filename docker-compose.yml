@@ -135,9 +135,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${AUTH_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DATASOURCE_PASSWORD}
       AUTH_MASTER_KEY: ${AUTH_MASTER_KEY}
+      SPRING_REDIS_URL: ${CHAT_REDIS_URL}  # contador do rate limit de /api/auth/token
     depends_on:
       postgres-auth:
         condition: service_healthy        # Espera o Postgres estar pronto
+      redis:
+        condition: service_healthy
     networks:
       - chat-network
 

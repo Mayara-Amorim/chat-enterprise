@@ -74,7 +74,7 @@ steps:
       - '--min-instances=0'
       - '--max-instances=2'
       - '--set-env-vars=SPRING_PROFILES_ACTIVE=prod'
-      - '--set-secrets=SPRING_DATASOURCE_URL=auth-datasource-url:latest,SPRING_DATASOURCE_USERNAME=auth-datasource-username:latest,SPRING_DATASOURCE_PASSWORD=auth-datasource-password:latest,AUTH_MASTER_KEY=auth-master-key:latest,RSA_PRIVATE_KEY_BASE64=rsa-private-key-base64:latest'
+      - '--set-secrets=SPRING_DATASOURCE_URL=auth-datasource-url:latest,SPRING_DATASOURCE_USERNAME=auth-datasource-username:latest,SPRING_DATASOURCE_PASSWORD=auth-datasource-password:latest,AUTH_MASTER_KEY=auth-master-key:latest,RSA_PRIVATE_KEY_BASE64=rsa-private-key-base64:latest,SPRING_REDIS_URL=redis-url:latest'
 
   # ------------------------------------------
   # Step 7: Obter URL do auth-service para o chat-service
