@@ -53,6 +53,9 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 accessor.setUser(() -> jwt.getSubject());
 
             } catch (Exception e) {
+                // Sem este log, "token expirado", "assinatura inválida" e "JWKS inacessível"
+                // ficam indistinguíveis em produção. O cliente continua vendo a mesma mensagem.
+                log.warn("falha ao validar JWT no handshake WebSocket", e);
                 throw new IllegalArgumentException("Acesso negado: Token JWT inválido ou expirado.");
             }
         }
